@@ -1,0 +1,84 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: sophos-vector
+  namespace: ${PROJECT_ID}
+  labels:
+    cloud.googleapis.com/location:
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/ingress: "all"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/cloudsql-instances: codeinc-sophos-cloud:europe-west4:sophos-vector-db
+    spec:
+      timeoutSeconds: 30
+      containerConcurrency: 10
+      serviceAccountName: sophos-vector@codeinc-sophos-cloud.iam.gserviceaccount.com
+      containers:
+        - image: ${IMAGE}:${TAG_NAME}
+          ports:
+            - containerPort: 80
+          env:
+            - name: APP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vector-db-playground-app-secret-key
+                  key: latest
+            - name: APP_HOSTNAME
+              value: "sophos-vector.codeinc.dev"
+
+            # Qdrant
+            - name: QDRANT_URL
+              value: "https://d81fa033-8fe4-4632-8b67-130b9a448d76.europe-west3-0.gcp.cloud.qdrant.io"
+            - name: QDRANT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vector-db-playground-qdrant-api-key
+                  key: latest
+
+            # MySQL Database
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vector-db-playground-database-url
+                  key: latest
+
+            # Google
+            - name: GOOGLE_DOCUMENTS_BUCKET
+              value: "sophos_vector_documents"
+            - name: GOOGLE_CREDENTIALS
+              valueFrom:
+                secretKeyRef:
+                  name: vector-db-playground-google-credentials
+                  key: latest
+            - name: GOOGLE_OAUTH_CLIENT_ID
+              value: "282613225984-udrgn9qb042iogm2df3qkgj2e7c9n39m.apps.googleusercontent.com"
+            - name: GOOGLE_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vector-db-playground-google-oauth-client-secret
+                  key: latest
+            - name: GOOGLE_OAUTH_ALLOWED_USERS
+              value: "@codeinc.co,@fogandfrog.com,alexis.seidner-lempereur@veolia.com,jerome.franconnet@veolia.com,samuel.cotte@veolia.com,ludivine.gallou@veolia.com"
+            - name: GOOGLE_GENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vector-db-playground-google-genai-api-key
+                  key: latest
+          resources:
+            limits:
+              cpu: "2"
+              memory: 1024Mi
+          livenessProbe: &probe
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+          startupProbe: *probe
+  traffic:
+    - percent: 100
+      latestRevision: true

@@ -1,0 +1,13 @@
+[project]
+name = "sophos-vector"
+version = "v0.1.0"
+description = "A playground to test vector databases for Sophos"
+authors = [
+    { name = "Joan Fabrégat", email = "jfabregat@fogandfrog.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "transformers",
+    "torch",
+    "numpy",
+]
