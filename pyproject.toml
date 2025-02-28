@@ -1,13 +1,27 @@
 [project]
-name = "sophos-vector"
+name = "embedding-service"
 version = "v0.1.0"
-description = "A playground to test vector databases for Sophos"
+description = "API for generating sparse and dense embeddings from text"
 authors = [
     { name = "Joan Fabrégat", email = "jfabregat@fogandfrog.com" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "transformers",
     "torch",
     "numpy",
+    "fastapi",
+    "pydantic",
+    "uvicorn",
 ]
+
+[dependency-groups]
+dev = [
+    "einops>=0.8.1",
+    "fastembed>=0.6.0",
+    "httpx>=0.28.1",
+    "numpy>=2.2.3",
+    "pytest>=8.3.4",
+    "sentence-transformers>=3.4.1",
+]
+

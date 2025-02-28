@@ -3,5 +3,9 @@
 #  Proprietary and confidential
 #  Visit <https://www.codeinc.co> for more information
 
-SparseVector = tuple[list[int], list[float]]
-DenseVector = list[float]
+from app.models import BatchEmbedRequest
+
+
+class E5BatchEmbedRequest(BatchEmbedRequest):
+    """Request schema for embeddings"""
+    normalize: bool = True
