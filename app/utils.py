@@ -24,22 +24,20 @@ def get_device() -> str:
 
 def load_tokenizer_and_model(
         model_name: str,
-        *,
-        trust_remote_code: bool = False
+        **kwargs
 ) -> tuple[PreTrainedTokenizer, PreTrainedModel, str]:
     """
     Load a model and tokenizer from the Hugging Face model hub.
 
     Args:
         model_name: The name of the model to load
-        trust_remote_code: Whether to trust remote code
 
     Returns:
         A tuple containing the tokenizer, model, and device
     """
     logger.info(f"Loading model {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=trust_remote_code)
-    model = AutoModel.from_pretrained(model_name, trust_remote_code=trust_remote_code)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, **kwargs)
+    model = AutoModel.from_pretrained(model_name, **kwargs)
     device = get_device()
     model = model.to(device)
     logger.info(f"Model loaded on device: {device}")

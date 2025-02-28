@@ -7,9 +7,9 @@ import os
 
 class Config:
     # Application configuration
-    APP_VERSION = os.getenv("APP_VERSION", "unknown")
-    APP_BUILD_ID = os.getenv("APP_BUILD_ID", "unknown")
-    APP_COMMIT_SHA = os.getenv("APP_COMMIT_SHA", "unknown")
+    APP_VERSION = os.getenv("APP_VERSION", "v0.0")
+    APP_BUILD_ID = os.getenv("APP_BUILD_ID", "XXXXXX")
+    APP_COMMIT_SHA = os.getenv("APP_COMMIT_SHA", "XXXXXX")
 
     # Models
     ENABLE_E5_LARGE_V2 = os.getenv("ENABLE_E5_LARGE_V2", "false").lower() == "true"

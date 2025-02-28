@@ -3,9 +3,9 @@
 #  Proprietary and confidential
 #  Visit <https://www.codeinc.co> for more information
 
-import enum
-
 from pydantic import BaseModel
+
+from app.embedders import AvailableEmbedders
 
 
 class RootResponse(BaseModel):
@@ -15,30 +15,21 @@ class RootResponse(BaseModel):
     build_id: str
     commit_sha: str
     uptime: float
+    embedders: list[str]
     device: str
-
-
-class ModelType(str, enum.Enum):
-    SPARSE = "sparse"
-    DENSE = "dense"
-
-
-class ModelCard(BaseModel):
-    model_name: str
-    description: str
-    url: str
-    max_tokens: int
-    type: ModelType
 
 
 class BatchEmbedRequest(BaseModel):
     """Request schema for embeddings"""
+    embedder: AvailableEmbedders
     texts: list[str]
+    normalize: bool = True
+    task: str = None
 
 
 class BatchEmbedResponse(BaseModel):
     """Response schema for embeddings"""
-    embeddings: list[list[float]]
+    embeddings: list[list[float] | tuple[list[int], list[float]]]
     count: int
     dimensions: int
     compute_time: float
@@ -46,6 +37,7 @@ class BatchEmbedResponse(BaseModel):
 
 class TokensCountRequest(BaseModel):
     """Request schema for tokens count"""
+    embedder: AvailableEmbedders
     texts: list[str]
 
 
