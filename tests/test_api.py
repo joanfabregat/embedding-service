@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.api import app
 from app.config import APP_VERSION, APP_BUILD_ID, APP_COMMIT_SHA
 
 client = TestClient(app)
