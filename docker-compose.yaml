@@ -6,17 +6,41 @@
 # The Software is provided "as is", without warranty of any kind.
 
 services:
-  embedding-service:
-    container_name: embedding-service
-    image: embedding-service:latest
+  embedding-service-bm42:
+    container_name: embedding-service-bm42
+    image: embedding-service-bm42:latest
     build:
       context: .
       dockerfile: Dockerfile
       args:
         - PORT=80
-        - EMBEDDING_MODEL=bert-base-uncased
-        - VERSION=v0.0
-        - BUILD_ID=XXXXXX
-        - COMMIT_SHA=XXXXXX
+        - EMBEDDING_MODEL=bm42
+        - DEPENDENCIES_GROUP=fastembed
     ports:
-      - "80:80"
+      - "8080:80"
+
+  embedding-service-jina:
+    container_name: embedding-service-jina
+    image: embedding-service-jina:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PORT=80
+        - EMBEDDING_MODEL=jina_embeddings_v3
+        - DEPENDENCIES_GROUP=transformers
+    ports:
+      - "8081:80"
+
+  embedding-service-e5:
+    container_name: embedding-service-e5
+    image: embedding-service-e5:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PORT=80
+        - EMBEDDING_MODEL=e5_large_v2
+        - DEPENDENCIES_GROUP=transformers
+    ports:
+      - "8082:80"
