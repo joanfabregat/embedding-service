@@ -1,54 +1,40 @@
 # --- Builder Stage ---
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 WORKDIR /app
 
-# Install only necessary system dependencies
+# Install only necessary system dependencies and remove them afterward
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential && \
+    apt-get install -y --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 # Install uv and its dependencies
 COPY --from=ghcr.io/astral-sh/uv:0.5.31 /uv /uvx /bin/
-RUN uv venv .venv
+RUN chmod +x /bin/uv /bin/uvx && \
+    uv venv .venv
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy dependency specification and install production dependencies
-# Install minimal transformers without models
 COPY uv.lock pyproject.toml ./
-
-# Predownload models to a specific directory
-# This prevents downloading the entire model zoo
-RUN mkdir -p /app/models
-
-# Install dependencies
-RUN uv sync --frozen --group prod && \
-    # Clean cache files from pip
-    find /app/.venv -name '*.pyc' -delete && \
-    find /app/.venv -name '__pycache__' -delete && \
-    # Remove unnecessary torch components
-    rm -rf /app/.venv/lib/python3.12/site-packages/torch/test/ && \
-    rm -rf /app/.venv/lib/python3.12/site-packages/torch/cuda/ && \
-    # Remove transformers cache and unneeded model files
-    rm -rf /app/.venv/lib/python3.12/site-packages/transformers/models/* && \
-    rm -rf /root/.cache/huggingface
-
-# Copy and run model download script
-COPY download_models.py ./
-ENV TRANSFORMERS_CACHE=/app/models
-RUN python download_models.py
+RUN uv sync --frozen --group prod
 
 
 # --- Final Image ---
-FROM python:3.12-slim-bookworm
+FROM python:3.13-slim-bookworm
 WORKDIR /app
 
 ARG PORT=80
+ARG ENABLED_MODELS=bm42,jina_embeddings_v3,e5_large_v2
 ARG APP_ENV=production
 ARG APP_VERSION
 ARG APP_BUILD_ID
 ARG APP_COMMIT_SHA
 
+# Prevent Python from writing bytecode files
+ENV PYTHONDONTWRITEBYTECODE=1
+# Ensure that Python outputs are sent directly to terminal without buffering
+ENV PYTHONUNBUFFERED=1
 ENV PORT=${PORT}
+ENV ENABLED_MODELS=${ENABLED_MODELS}
 ENV APP_ENV=${APP_ENV}
 ENV APP_VERSION=${APP_VERSION}
 ENV APP_BUILD_ID=${APP_BUILD_ID}
@@ -58,18 +44,19 @@ ENV APP_COMMIT_SHA=${APP_COMMIT_SHA}
 COPY --from=builder /app/.venv .venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Copy pre-downloaded models
-COPY --from=builder /app/models /app/models
-ENV TRANSFORMERS_CACHE=/app/models
-
 # Copy only necessary application files
 COPY app/ ./app/
-ENV PYTHONPATH=/app
 
-# Set torch env vars to reduce memory usage
-ENV PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
-ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:32
+# Ensure a non-root user
+RUN addgroup --system app && adduser --system --group --no-create-home app && \
+    chown -R app:app /app
+USER app
 
-EXPOSE ${PORT}
-USER nobody
-CMD ["sh", "-c", "gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app.frontend.serve:app"]
+# Download the models
+ENV HF_HOME=/app/cache
+RUN mkdir -p /app/cache && chmod 777 /app/cache && \
+    python -m app.bin.download_models
+
+# https://cloud.google.com/run/docs/tips/python#optimize_gunicorn
+EXPOSE $PORT
+CMD ["sh", "-c", "uvicorn app.api:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]

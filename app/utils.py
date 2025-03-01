@@ -19,7 +19,13 @@ def get_device() -> str:
     Returns:
         str: The device to run the model on
     """
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    if torch.cuda.is_available():
+        return "cuda"
+
+    if torch.mps.is_available():
+        return "mps"
+
+    return "cpu"
 
 
 def load_tokenizer_and_model(

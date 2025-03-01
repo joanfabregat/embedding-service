@@ -1,0 +1,14 @@
+services:
+  embedding-service:
+    container_name: embedding-service
+    image: embedding-service:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - PORT=80
+        - APP_VERSION=v0.0
+        - APP_BUILD_ID=XXXXXX
+        - APP_COMMIT_SHA=XXXXXX
+    ports:
+      - "80:80"

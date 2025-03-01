@@ -12,16 +12,15 @@ dependencies = [
     "numpy",
     "fastapi",
     "pydantic",
-    "uvicorn",
+    "fastembed>=0.6.0",
 ]
 
 [dependency-groups]
 dev = [
     "einops>=0.8.1",
-    "fastembed>=0.6.0",
     "httpx>=0.28.1",
-    "numpy>=2.2.3",
     "pytest>=8.3.4",
-    "sentence-transformers>=3.4.1",
 ]
-
+prod = [
+    "uvicorn>=0.34.0",
+]

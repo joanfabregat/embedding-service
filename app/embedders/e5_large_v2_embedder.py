@@ -9,14 +9,16 @@ from transformers import AutoTokenizer, AutoModel
 
 from app.logging import logger
 from app.utils import get_device
-from .base_embedder import BaseTransformerEmbedder
+from .base_embedder import BaseEmbedder
 
 
-class E5LargeV2Embedder(BaseTransformerEmbedder):
+class E5LargeV2Embedder(BaseEmbedder):
     """
     Embedder using the Multilingual E5 model
+    https://huggingface.co/intfloat/e5-large-v2
     """
 
+    DEFAULT_NORMALIZE = True
     MODEL_NAME = "intfloat/e5-large-v2"
 
     def __init__(self):
@@ -25,18 +27,17 @@ class E5LargeV2Embedder(BaseTransformerEmbedder):
         """
         logger.info(f"Initializing E5 embedder with model {self.MODEL_NAME}")
         self.device = get_device()
-        super().__init__(
-            tokenizer=AutoTokenizer.from_pretrained(self.MODEL_NAME),
-            model=AutoModel.from_pretrained(self.MODEL_NAME).to(self.device)
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
+        self.model = AutoModel.from_pretrained(self.MODEL_NAME).to(self.device)
 
-    def batch_embed(self, texts: list[str], **kwargs) -> list[list[float]]:
+    # noinspection DuplicatedCode
+    def batch_embed(self, texts: list[str], config: dict) -> list[list[float]]:
         """
         Embed a batch of texts using the Multilingual E5 model.
 
         Args:
             texts: The texts to embed
-            **kwargs: Additional arguments to pass to the embedder (e.g. normalize)
+            config: The configuration for the model (supports 'normalize')
 
         Returns:
             list[float]: The embeddings of the texts
@@ -65,8 +66,20 @@ class E5LargeV2Embedder(BaseTransformerEmbedder):
                 / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
         )
 
-        if kwargs.get("normalize", True):
+        if config.get("normalize", self.DEFAULT_NORMALIZE):
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
         # Convert to numpy and then to list for JSON serialization
         return embeddings.cpu().numpy().tolist()
+
+    def count_tokens(self, text: str) -> int:
+        """
+        Count the number of tokens in a text.
+
+        Args:
+            text: The text to count tokens in
+
+        Returns:
+            int: The number of tokens in the text
+        """
+        return len(self.tokenizer.encode(text, add_special_tokens=False))

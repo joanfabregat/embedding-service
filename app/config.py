@@ -5,13 +5,14 @@
 
 import os
 
+
 class Config:
+    PORT = int(os.getenv("PORT", 8000))
+
     # Application configuration
     APP_VERSION = os.getenv("APP_VERSION", "v0.0")
     APP_BUILD_ID = os.getenv("APP_BUILD_ID", "XXXXXX")
     APP_COMMIT_SHA = os.getenv("APP_COMMIT_SHA", "XXXXXX")
 
     # Models
-    ENABLE_E5_LARGE_V2 = os.getenv("ENABLE_E5_LARGE_V2", "false").lower() == "true"
-    ENABLE_JINA_EMBEDDINGS_V3 = os.getenv("ENABLE_JINA_EMBEDDINGS_V3", "false").lower() == "true"
-    ENABLE_BM42 = os.getenv("ENABLE_BM42", "false").lower() == "true"
+    ENABLED_MODELS = os.getenv("ENABLED_MODELS", "bm42,jina_embeddings_v3,e5_large_v2").split(",")

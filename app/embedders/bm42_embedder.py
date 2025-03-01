@@ -7,6 +7,7 @@ import numpy as np
 from fastembed import SparseTextEmbedding
 
 from app.logging import logger
+from app.models import SparseVector
 from .base_embedder import BaseEmbedder
 
 
@@ -16,10 +17,10 @@ class BM42Embedder(BaseEmbedder):
     https://huggingface.co/Qdrant/all_miniLM_L6_v2_with_attentions
     https://qdrant.tech/articles/bm42/
     """
+
     MODEL_NAME = "Qdrant/bm42-all-minilm-l6-v2-attentions"
-    SPARSITY_THRESHOLD = 0.005
-    MAX_TOKENS = 512
-    IS_DOWNLOADABLE = True
+    DEFAULT_SPARSITY_THRESHOLD = 0.005
+    DEFAULT_ALLOW_NULL_VECTOR = False
 
     def __init__(self):
         """
@@ -28,19 +29,13 @@ class BM42Embedder(BaseEmbedder):
         logger.info(f"Initializing BM42 sparse embedder with model {self.MODEL_NAME}")
         self.model = SparseTextEmbedding(model_name=self.MODEL_NAME)
 
-    def batch_embed(
-            self,
-            texts: list[str],
-            *,
-            sparsity_threshold: float = SPARSITY_THRESHOLD,
-            allow_null_vector: bool = False,
-            **kwargs,
-    ) -> list[tuple[list[int], list[[float]]] or None]:
+    def batch_embed(self, texts: list[str], config: dict) -> list[SparseVector or None]:
         """
         Embed a batch of texts into sparse vectors.
 
         Args:
             texts: A list of texts to embed
+            config: A dictionary of configuration options (supports 'sparsity_threshold' and 'allow_null_vector')
             sparsity_threshold: The threshold for sparsity
             allow_null_vector: Whether to allow null vectors
 
@@ -53,6 +48,8 @@ class BM42Embedder(BaseEmbedder):
         sparse_vectors = []
         for embedding in embeddings:
             sparse_vector = embedding.indices.tolist(), embedding.values.tolist()
+            sparsity_threshold = config.get('sparsity_threshold', self.DEFAULT_SPARSITY_THRESHOLD)
+            allow_null_vector = config.get('allow_null_vector', self.DEFAULT_ALLOW_NULL_VECTOR)
             if sparsity_threshold:
                 sparse_vector = self._apply_sparse_threshold(sparse_vector, sparsity_threshold, allow_null_vector)
             sparse_vectors.append(sparse_vector)
@@ -61,10 +58,10 @@ class BM42Embedder(BaseEmbedder):
 
     @staticmethod
     def _apply_sparse_threshold(
-            sparse_vector: tuple[list[int], list[[float]]],
-            sparsity_threshold: float = SPARSITY_THRESHOLD,
-            allow_null_vector: bool = False
-    ) -> tuple[list[int], list[float]] or None:
+            sparse_vector: SparseVector,
+            sparsity_threshold: float,
+            allow_null_vector: bool
+    ) -> SparseVector or None:
         """
         Filter out values below the sparsity threshold.
 

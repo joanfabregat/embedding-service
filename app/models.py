@@ -5,24 +5,24 @@
 
 from pydantic import BaseModel
 
-from app.embedders import AvailableEmbedders
-
+SparseVector = tuple[list[int], list[float]]
+DenseVector = list[float]
 
 class RootResponse(BaseModel):
     """Response schema for root endpoint"""
-    status: str = "ok"
     version: str
     build_id: str
     commit_sha: str
     uptime: float
-    embedders: list[str]
+    available_models: list[str]
     device: str
 
 
 class BatchEmbedRequest(BaseModel):
     """Request schema for embeddings"""
-    embedder: AvailableEmbedders
+    model: str
     texts: list[str]
+    config: dict = None
     normalize: bool = True
     task: str = None
 
@@ -30,6 +30,7 @@ class BatchEmbedRequest(BaseModel):
 class BatchEmbedResponse(BaseModel):
     """Response schema for embeddings"""
     embeddings: list[list[float] | tuple[list[int], list[float]]]
+    model: str
     count: int
     dimensions: int
     compute_time: float
@@ -37,11 +38,12 @@ class BatchEmbedResponse(BaseModel):
 
 class TokensCountRequest(BaseModel):
     """Request schema for tokens count"""
-    embedder: AvailableEmbedders
+    model: str
     texts: list[str]
 
 
 class TokensCountResponse(BaseModel):
     """Response schema for tokens count"""
     tokens_count: list[int]
+    model: str
     compute_time: float

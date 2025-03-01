@@ -10,23 +10,19 @@ import torch
 
 from app.logging import logger
 from app.utils import get_device
-from .base_embedder import BaseTransformerEmbedder
+from .base_embedder import BaseEmbedder
 
 
-class JinaEmbeddingsV3Embedder(BaseTransformerEmbedder):
+class JinaEmbeddingsV3Embedder(BaseEmbedder):
     """
     Embedder using the Jina embeddings v3 model
+    https://huggingface.co/jinaai/jina-embeddings-v3
     """
 
-    class Tasks(str, enum.Enum):
-        """The tasks that the model can be used"""
-        RETRIEVAL_QUERY = "retrieval.query"
-        RETRIEVAL_PASSAGE = "retrieval.passage"
-        SEPARATION = "separation"
-        CLASSIFICATION = "classification"
-        TEXT_MATCHING = "text-matching"
-
     MODEL_NAME = "jinaai/jina-embeddings-v3"
+    REVISION = "f1944de8402dcd5f2b03f822a4bc22a7f2de2eb9"
+    DEFAULT_NORMALIZE = True
+    DEFAULT_TASK = "retrieval.query"
 
     def __init__(self):
         """
@@ -34,23 +30,32 @@ class JinaEmbeddingsV3Embedder(BaseTransformerEmbedder):
         """
         logger.info(f"Initializing Jina embeddings v3 embedder with model {self.MODEL_NAME}")
         self.device = get_device()
-        super().__init__(
-            tokenizer=AutoTokenizer.from_pretrained(self.MODEL_NAME, trust_remote_code=True),
-            model=AutoModel.from_pretrained(self.MODEL_NAME, trust_remote_code=True).to(self.device)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.MODEL_NAME,
+            trust_remote_code=True,
+            revision=self.REVISION
         )
+        self.model = AutoModel.from_pretrained(
+            self.MODEL_NAME,
+            trust_remote_code=True,
+            revision=self.REVISION
+        ).to(self.device)
 
-    # Process batch of texts to embeddings
-    def batch_embed(
-            self,
-            texts: list[str],
-            **kwargs,
-    ) -> list[list[float]]:
+    # noinspection DuplicatedCode
+    def batch_embed(self, texts: list[str], config: dict) -> list[list[float]]:
         """
         Get embeddings for a batch of texts
 
+        Supported tasks are:
+        - retrieval.query
+        - retrieval.passage
+        - separation
+        - classification
+        - text-matching
+
         Args:
             texts: The texts to get embeddings for
-            **kwargs: Additional arguments to pass to the embedder (e.g. normalize, task)
+            config: The configuration for the model (supports 'task' and 'normalize')
 
         Returns:
             list[list[float]]: The embeddings for the texts
@@ -62,7 +67,7 @@ class JinaEmbeddingsV3Embedder(BaseTransformerEmbedder):
 
         # Generate embeddings
         with torch.no_grad():
-            model_output = self.model(**inputs, task=kwargs.get("task", self.Tasks.RETRIEVAL_QUERY))
+            model_output = self.model(**inputs, task=config.get("task", self.DEFAULT_TASK))
 
         # Apply mean pooling and optionally normalize
         token_embeddings = model_output[0]
@@ -72,8 +77,20 @@ class JinaEmbeddingsV3Embedder(BaseTransformerEmbedder):
                 / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
         )
 
-        if kwargs.get("normalize", True):
+        if config.get("normalize", self.DEFAULT_NORMALIZE):
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
         # Convert to numpy and then to list for JSON serialization
         return embeddings.cpu().numpy().tolist()
+
+    def count_tokens(self, text: str) -> int:
+        """
+        Count the number of tokens in a text.
+
+        Args:
+            text: The text to count tokens in
+
+        Returns:
+            int: The number of tokens in the text
+        """
+        return len(self.tokenizer.encode(text, add_special_tokens=False))
