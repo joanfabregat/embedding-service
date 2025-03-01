@@ -40,15 +40,15 @@ jobs:
         with:
           fetch-depth: 1
 
-      #      - name: Free up disk space
-      #        run: |
-      #          df -h
-      #          sudo rm -rf /usr/share/dotnet
-      #          sudo rm -rf /usr/local/lib/android
-      #          sudo rm -rf /opt/ghc
-      #          sudo rm -rf /opt/hostedtoolcache/CodeQL
-      #          docker system prune -af
-      #          df -h
+      - name: Free up disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker system prune -af
+          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -74,8 +74,8 @@ jobs:
             ${{ env.DOCKERHUB_IMAGE }}
             ${{ env.GHCR_IMAGE }}
           tags: |
-            type=ref,event=branch,suffix=${{ matrix.model.tag_suffix }}
-            type=ref,event=pr,suffix=${{ matrix.model.tag_suffix }}
+#            type=ref,event=branch,suffix=${{ matrix.model.tag_suffix }}
+#            type=ref,event=pr,suffix=${{ matrix.model.tag_suffix }}
             type=semver,pattern={{version}},suffix=${{ matrix.model.tag_suffix }}
             type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.model.tag_suffix }}
             type=sha,suffix=${{ matrix.model.tag_suffix }}
