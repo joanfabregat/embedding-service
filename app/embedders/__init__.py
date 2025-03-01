@@ -5,14 +5,12 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
-import functools
-
 from app.config import Config
+from app.logging import logger
 from .base_embedder import BaseEmbedder
 
 
-@functools.lru_cache(maxsize=None)
-def load_embedder(model_name: str) -> BaseEmbedder:
+def load_embedder(model_name: str = Config.EMBEDDING_MODEL) -> BaseEmbedder:
     """
     Load the embedder for the given name
 
@@ -26,20 +24,22 @@ def load_embedder(model_name: str) -> BaseEmbedder:
     return model_name()
 
 
-def get_embedder(model_nane: str) -> type[BaseEmbedder]:
+def get_embedder(model_name: Config.EMBEDDING_MODEL) -> type[BaseEmbedder]:
     """
     Get the embedder for the given name
 
     Args:
-        model_nane: The name of the embedder
+        model_name: The name of the embedder
 
     Returns:
         BaseEmbedder: The embedder
     """
-    if model_nane not in Config.ENABLED_MODELS:
-        raise ValueError(f"Embedder {model_nane} is not enabled")
+    logger.info(f"Loading embedder for {model_name}")
 
-    match model_nane:
+    if model_name not in Config.ENABLED_MODELS:
+        raise ValueError(f"Embedder {model_name} is not enabled")
+
+    match model_name:
         case "bm42":
             from .bm42_embedder import BM42Embedder
             return BM42Embedder
@@ -53,4 +53,4 @@ def get_embedder(model_nane: str) -> type[BaseEmbedder]:
             return E5LargeV2Embedder
 
         case _:
-            raise ValueError(f"Embedder {model_nane} is not supported")
+            raise ValueError(f"Embedder {model_name} is not supported")

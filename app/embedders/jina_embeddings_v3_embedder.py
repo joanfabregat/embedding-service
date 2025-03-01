@@ -5,12 +5,14 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
+import enum
+
 import torch
 from transformers import AutoTokenizer, AutoModel
 
 from app.logging import logger
 from app.utils import get_device
-from .base_embedder import BaseEmbedder
+from .base_embedder import BaseEmbedder, DenseVector
 
 
 class JinaEmbeddingsV3Embedder(BaseEmbedder):
@@ -23,11 +25,30 @@ class JinaEmbeddingsV3Embedder(BaseEmbedder):
     REVISION = "f1944de8402dcd5f2b03f822a4bc22a7f2de2eb9"
     DEFAULT_NORMALIZE = True
     DEFAULT_TASK = "retrieval.query"
+    EMBEDDING_TYPE = DenseVector
+
+    class BatchEmbedRequest(BaseEmbedder.BatchEmbedRequest):
+        class Task(str, enum.Enum):
+            RETRIEVAL_QUERY = "retrieval.query"
+            RETRIEVAL_PASSAGE = "retrieval.passage"
+            SEPARATION = "separation"
+            CLASSIFICATION = "classification"
+            TEXT_MATCHING = "text-matching"
+
+        normalize: bool = True
+        task: Task = Task.RETRIEVAL_QUERY
+
+    class BatchEmbedResponse(BaseEmbedder.BatchEmbedResponse):
+        embeddings: list[DenseVector]
+
+    class TokensCountRequest(BaseEmbedder.TokensCountRequest):
+        pass
+
+    class TokensCountResponse(BaseEmbedder.TokensCountResponse):
+        pass
 
     def __init__(self):
-        """
-        Initialize the embedder.
-        """
+        """Initialize the embedder."""
         logger.info(f"Initializing Jina embeddings v3 embedder with model {self.MODEL_NAME}")
         self.device = get_device()
         self.tokenizer = AutoTokenizer.from_pretrained(
@@ -42,32 +63,16 @@ class JinaEmbeddingsV3Embedder(BaseEmbedder):
         ).to(self.device)
 
     # noinspection DuplicatedCode
-    def batch_embed(self, texts: list[str], config: dict) -> list[list[float]]:
-        """
-        Get embeddings for a batch of texts
-
-        Supported tasks are:
-        - retrieval.query
-        - retrieval.passage
-        - separation
-        - classification
-        - text-matching
-
-        Args:
-            texts: The texts to get embeddings for
-            config: The configuration for the model (supports 'task' and 'normalize')
-
-        Returns:
-            list[list[float]]: The embeddings for the texts
-        """
-        logger.info(f"Embedding {len(texts)} texts using {self.MODEL_NAME}")
+    def batch_embed(self, request: BatchEmbedRequest) -> BatchEmbedResponse:
+        """Get embeddings for a batch of texts"""
+        logger.info(f"Embedding {len(request.texts)} texts using {self.MODEL_NAME}")
 
         # Tokenize and prepare for model
-        inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer(request.texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
 
         # Generate embeddings
         with torch.no_grad():
-            model_output = self.model(**inputs, task=config.get("task", self.DEFAULT_TASK))
+            model_output = self.model(**inputs, task=request.task.value)
 
         # Apply mean pooling and optionally normalize
         token_embeddings = model_output[0]
@@ -77,20 +82,18 @@ class JinaEmbeddingsV3Embedder(BaseEmbedder):
                 / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
         )
 
-        if config.get("normalize", self.DEFAULT_NORMALIZE):
+        if request.normalize:
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
         # Convert to numpy and then to list for JSON serialization
-        return embeddings.cpu().numpy().tolist()
+        return self.BatchEmbedResponse(
+            model=self.MODEL_NAME,
+            embeddings=embeddings.cpu().numpy().tolist()
+        )
 
-    def count_tokens(self, text: str) -> int:
-        """
-        Count the number of tokens in a text.
-
-        Args:
-            text: The text to count tokens in
-
-        Returns:
-            int: The number of tokens in the text
-        """
-        return len(self.tokenizer.encode(text, add_special_tokens=False))
+    def count_tokens(self, request: TokensCountRequest) -> TokensCountResponse:
+        """Count the number of tokens in a text."""
+        return self.TokensCountResponse(
+            model=self.MODEL_NAME,
+            tokens_count=[len(self.tokenizer.tokenize(text)) for text in request.texts]
+        )

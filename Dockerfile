@@ -7,6 +7,9 @@
 
 # --- Builder Stage ---
 FROM python:3.13-slim-bookworm AS builder
+
+ARG DEPENDENCIES_GROUP
+
 WORKDIR /app
 
 # Install only necessary system dependencies and remove them afterward
@@ -22,7 +25,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy dependency specification and install production dependencies
 COPY uv.lock pyproject.toml ./
-RUN uv sync --frozen --group prod
+RUN uv sync --frozen --group ${DEPENDENCIES_GROUP}
 
 
 # --- Final Image ---
@@ -30,7 +33,7 @@ FROM python:3.13-slim-bookworm
 WORKDIR /app
 
 ARG PORT=80
-ARG ENABLED_MODELS=bm42,jina_embeddings_v3,e5_large_v2
+ARG EMBEDDING_MODEL
 ARG APP_ENV=production
 ARG APP_VERSION
 ARG APP_BUILD_ID
@@ -41,7 +44,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Ensure that Python outputs are sent directly to terminal without buffering
 ENV PYTHONUNBUFFERED=1
 ENV PORT=${PORT}
-ENV ENABLED_MODELS=${ENABLED_MODELS}
+ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
 ENV APP_ENV=${APP_ENV}
 ENV APP_VERSION=${APP_VERSION}
 ENV APP_BUILD_ID=${APP_BUILD_ID}
@@ -62,8 +65,8 @@ USER app
 # Download the models
 ENV HF_HOME=/app/cache
 RUN mkdir -p /app/cache && chmod 777 /app/cache && \
-    python -m app.bin.download_models
+    python -m app.bin.download_model
 
 # https://cloud.google.com/run/docs/tips/python#optimize_gunicorn
 EXPOSE $PORT
-CMD ["sh", "-c", "uvicorn app.api:app --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]
+CMD ["sh", "-c", "uvicorn app.api:api --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]

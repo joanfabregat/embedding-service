@@ -5,7 +5,7 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
-name: Build and Push Docker Image to Docker Hub
+name: Build and Push Docker Images with Multiple Models
 
 on:
   push:
@@ -15,12 +15,20 @@ on:
       - 'v*'
 
 env:
-  IMAGE: "joanfabregat/embedding-service"
-  ENABLED_MODELS: "bm42,jina_embeddings_v3,e5_large_v2"
+  BASE_IMAGE: "joanfabregat/embedding-service"
+  MODELS: >-
+    [
+      {"name": "bm42", "tag_suffix": "-bm42", dependencies_group: "bm42"},
+      {"name": "jina_embeddings_v3", "tag_suffix": "-jina", dependencies_group: "jina"},
+      {"name": "e5_large_v2", "tag_suffix": "-e5", dependencies_group: "e5"}
+    ]
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        model: ${{ fromJson(env.MODELS) }}
 
     steps:
       - name: Checkout repository
@@ -51,13 +59,14 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.IMAGE }}
+          images: ${{ env.BASE_IMAGE }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
+            type=ref,event=branch,suffix=${{ matrix.model.tag_suffix }}
+            type=ref,event=pr,suffix=${{ matrix.model.tag_suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.model.tag_suffix }}
+            type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.model.tag_suffix }}
+            type=sha,suffix=${{ matrix.model.tag_suffix }}
+            type=raw,value=latest${{ matrix.model.tag_suffix }},enable=${{ github.ref == 'refs/heads/deploy' || startsWith(github.ref, 'refs/tags/') }}
 
       - name: Build and push Docker image with BuildKit caching
         uses: docker/build-push-action@v4
@@ -66,10 +75,11 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=inline
+          cache-from: type=registry,ref=${{ env.BASE_IMAGE }}:buildcache-${{ matrix.model.name }}
+          cache-to: type=registry,ref=${{ env.BASE_IMAGE }}:buildcache-${{ matrix.model.name }},mode=inline
           build-args: |
             APP_VERSION=${{ github.ref_name }}
-            ENABLED_MODELS=${{ env.ENABLED_MODELS }}
+            DEPENDENCIES_GROUP=${{ matrix.model.dependencies_group }}
+            EMBEDDING_MODEL=${{ matrix.model.name }}
             APP_BUILD_ID=${{ github.run_id }}
             APP_COMMIT_SHA=${{ github.sha }}

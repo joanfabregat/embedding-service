@@ -9,8 +9,7 @@ import numpy as np
 from fastembed import SparseTextEmbedding
 
 from app.logging import logger
-from app.models import SparseVector
-from .base_embedder import BaseEmbedder
+from .base_embedder import BaseEmbedder, SparseVector
 
 
 class BM42Embedder(BaseEmbedder):
@@ -29,6 +28,23 @@ class BM42Embedder(BaseEmbedder):
     MAX_TOKEN_LIMIT = 512
     # Define a default overlap for the sliding window (in tokens)
     DEFAULT_WINDOW_OVERLAP = 100
+    EMBEDDING_TYPE = SparseVector
+
+    class BatchEmbedRequest(BaseEmbedder.BatchEmbedRequest):
+        sparsity_threshold: float = 0.005
+        allow_null_vector: bool = False
+        window_size: int = 512
+        window_overlap: int = 100
+        window_combine_strategy: str = 'max'
+
+    class BatchEmbedResponse(BaseEmbedder.BatchEmbedResponse):
+        embeddings: list[SparseVector | None]
+
+    class TokensCountRequest(BaseEmbedder.TokensCountRequest):
+        pass
+
+    class TokensCountResponse(BaseEmbedder.TokensCountResponse):
+        pass
 
     def __init__(self):
         """
@@ -37,60 +53,44 @@ class BM42Embedder(BaseEmbedder):
         logger.info(f"Initializing BM42 sparse embedder with model {self.MODEL_NAME}")
         self.model = SparseTextEmbedding(model_name=self.MODEL_NAME)
 
-    def batch_embed(self, texts: list[str], config: dict) -> list[SparseVector or None]:
+    def batch_embed(self, request: BatchEmbedRequest) -> BatchEmbedResponse:
         """
         Embed a batch of texts into sparse vectors using sliding window approach for long texts.
-
-        Args:
-            texts: A list of texts to embed
-            config: A dictionary of configuration options
-                - sparsity_threshold: The threshold for sparsity
-                - allow_null_vector: Whether to allow null vectors
-                - window_size: Maximum window size in tokens (default: MAX_TOKEN_LIMIT)
-                - window_overlap: Overlap between windows in tokens (default: DEFAULT_WINDOW_OVERLAP)
-                - window_combine_strategy: How to combine window embeddings ('max', 'mean', 'sum')
-
-        Returns:
-            A list of sparse vectors
         """
-        logger.info(f"Embedding {len(texts)} texts using {self.MODEL_NAME}")
-
-        # Get configuration parameters
-        sparsity_threshold = config.get('sparsity_threshold', self.DEFAULT_SPARSITY_THRESHOLD)
-        allow_null_vector = config.get('allow_null_vector', self.DEFAULT_ALLOW_NULL_VECTOR)
-        window_size = config.get('window_size', self.MAX_TOKEN_LIMIT)
-        window_overlap = config.get('window_overlap', self.DEFAULT_WINDOW_OVERLAP)
-        combine_strategy = config.get('window_combine_strategy', 'max')
+        logger.info(f"Embedding {len(request.texts)} texts using {self.MODEL_NAME}")
 
         # Categorize texts based on token count
         short_texts = []  # Texts that fit within window_size
         long_texts_info = []  # Tuples of (original_index, windows) for long texts
 
-        for idx, text in enumerate(texts):
-            token_count = self.count_tokens(text)
-            if token_count <= window_size:
+        for idx, text in enumerate(request.texts):
+            if self._count_string_tokens(text) <= request.window_size:
                 short_texts.append(text)
             else:
-                windows = self._split_into_windows(text, window_size, window_overlap)
+                windows = self._split_into_windows(text, request.window_size, request.window_overlap)
                 long_texts_info.append((idx, windows))
 
         # Prepare result containers
-        result_vectors = [None] * len(texts)
+        result_vectors: list[SparseVector | None] = [None] * len(request.texts)
 
         # Process short texts in a batch (if any)
         if short_texts:
             # Create a mapping of original indices
             short_text_map = []
-            for idx, text in enumerate(texts):
-                if self.count_tokens(text) <= window_size:
+            for idx, text in enumerate(request.texts):
+                if self._count_string_tokens(text) <= request.window_size:
                     short_text_map.append(idx)
 
             # Embed all short texts and process them as a stream
             short_embeddings = self.model.embed(short_texts)
             for embedding, orig_idx in zip(short_embeddings, short_text_map):
                 sparse_vector = embedding.indices.tolist(), embedding.values.tolist()
-                if sparsity_threshold:
-                    sparse_vector = self._apply_sparse_threshold(sparse_vector, sparsity_threshold, allow_null_vector)
+                if request.sparsity_threshold:
+                    sparse_vector = self._apply_sparse_threshold(
+                        sparse_vector,
+                        request.sparsity_threshold,
+                        request.allow_null_vector
+                    )
                 result_vectors[orig_idx] = sparse_vector
 
         # Process all windows from long texts as a single batch (if any)
@@ -114,8 +114,12 @@ class BM42Embedder(BaseEmbedder):
                     text_to_windows[orig_idx] = []
 
                 sparse_vector = embedding.indices.tolist(), embedding.values.tolist()
-                if sparsity_threshold:
-                    sparse_vector = self._apply_sparse_threshold(sparse_vector, sparsity_threshold, allow_null_vector)
+                if request.sparsity_threshold:
+                    sparse_vector = self._apply_sparse_threshold(
+                        sparse_vector,
+                        request.sparsity_threshold,
+                        request.allow_null_vector
+                    )
 
                 if sparse_vector:  # Only add non-None vectors
                     text_to_windows[orig_idx].append(sparse_vector)
@@ -123,12 +127,15 @@ class BM42Embedder(BaseEmbedder):
             # Combine windows for each long text
             for orig_idx, window_vectors in text_to_windows.items():
                 if window_vectors:
-                    combined_vector = self._combine_sparse_vectors(window_vectors, combine_strategy)
+                    combined_vector = self._combine_sparse_vectors(window_vectors, request.combine_strategy)
                     result_vectors[orig_idx] = combined_vector
                 else:
-                    result_vectors[orig_idx] = None if allow_null_vector else ([], [])
+                    result_vectors[orig_idx] = None if request.allow_null_vector else ([], [])
 
-        return result_vectors
+        return self.BatchEmbedResponse(
+            model=self.MODEL_NAME,
+            embeddings=result_vectors,
+        )
 
     def _split_into_windows(self, text: str, window_size: int, window_overlap: int) -> list[str]:
         """
@@ -192,8 +199,8 @@ class BM42Embedder(BaseEmbedder):
             logger.info(f"Split text into {len(windows)} windows using word-based estimation")
             return windows
 
+    @staticmethod
     def _combine_sparse_vectors(
-            self,
             sparse_vectors: list[SparseVector],
             strategy: str = 'max'
     ) -> SparseVector:
@@ -291,32 +298,20 @@ class BM42Embedder(BaseEmbedder):
 
         return filtered_indices, filtered_values
 
-    def count_tokens(self, text: str) -> int:
+    def count_tokens(self, request: TokensCountRequest) -> TokensCountResponse:
+        """
+        Count the number of tokens in a batch of texts.
+        """
+        logger.info(f"Counting tokens for {len(request.texts)} texts using {self.MODEL_NAME}")
+        return self.TokensCountResponse(
+            model=self.MODEL_NAME,
+            tokens_count=[self._count_string_tokens(text) for text in request.texts],
+        )
+
+    def _count_string_tokens(self, string: str) -> int:
         """
         Count the number of tokens in a text string.
-
-        Args:
-            text: The input text string
-
-        Returns:
-            The number of tokens in the text
         """
-        # Use the model's tokenizer to count tokens
-        # SparseTextEmbedding doesn't directly expose the tokenizer count method
-        # so we can either:
-        # 1. Use the model's internal tokenizer
-        # 2. Estimate based on a simple approach
+        tokenizer = self.model.tokenizer
+        return len(tokenizer.encode(string))
 
-        # Method 1: Using the model's tokenizer (preferred)
-        try:
-            # Access the internal tokenizer from the model
-            tokenizer = self.model.tokenizer
-            encoded = tokenizer.encode(text)
-            return len(encoded)
-        except (AttributeError, TypeError):
-            # Fallback method if tokenizer is not directly accessible
-            # Simple whitespace-based approximation (less accurate)
-            import re
-            # Split on whitespace and punctuation
-            tokens = re.findall(r'\w+|[^\w\s]', text)
-            return len(tokens)

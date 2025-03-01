@@ -13,20 +13,24 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "transformers",
-    "torch",
     "numpy",
     "fastapi",
     "pydantic",
-    "fastembed>=0.6.0",
+    "uvicorn",
 ]
 
 [dependency-groups]
 dev = [
-    "einops>=0.8.1",
-    "httpx>=0.28.1",
-    "pytest>=8.3.4",
+    "pytest",
 ]
-prod = [
-    "uvicorn>=0.34.0",
+jina = [
+    "transformers",
+    "torch",
+]
+e5 = [
+    "transformers",
+    "torch",
+]
+bm42 = [
+    "fastembed",
 ]

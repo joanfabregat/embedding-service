@@ -8,81 +8,57 @@
 from datetime import datetime
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 from app.config import Config
 from app.embedders import load_embedder
 from app.logging import logger
-from app.models import RootResponse, BatchEmbedRequest, BatchEmbedResponse, TokensCountRequest, TokensCountResponse
 from app.utils import get_device
 
-startup = datetime.now()
-
 logger.info(f"Starting Embedding Service {Config.APP_VERSION} ({Config.APP_BUILD_ID})")
-app = FastAPI(
+startup = datetime.now()
+api = FastAPI(
     title="Embedding Service",
     version=Config.APP_VERSION,
     description="API for generating sparse and dense embeddings from text"
 )
+embedder = load_embedder(Config.EMBEDDING_MODEL)
 
 
-@app.get("/", response_model=RootResponse, tags=["root"])
+class RootResponse(BaseModel):
+    """Response schema for root endpoint"""
+    version: str
+    build_id: str
+    commit_sha: str
+    uptime: float
+    embedding_model: str
+    device: str
+
+
+@api.get("/", response_model=RootResponse, tags=["root"])
 def root():
     return RootResponse(
         version=Config.APP_VERSION,
         build_id=Config.APP_BUILD_ID,
         commit_sha=Config.APP_COMMIT_SHA,
         uptime=round((datetime.now() - startup).total_seconds()),
-        available_models=Config.ENABLED_MODELS,
+        embedding_model=Config.EMBEDDING_MODEL,
         device=get_device(),
     )
 
 
 # Process batch of texts to embeddings
-@app.post("/batch_embed", response_model=BatchEmbedResponse)
-def batch_embed(request: BatchEmbedRequest) -> BatchEmbedResponse:
+@api.post("/batch_embed", response_model=embedder.BatchEmbedResponse)
+def batch_embed(request: embedder.BatchEmbedRequest) -> embedder.BatchEmbedResponse:
     """
     Get embeddings for a batch of texts
-
-    Args:
-        request: The request containing the texts
-
-    Returns:
-        BatchEmbedResponse: The embeddings of the texts
     """
-    start = datetime.now()
-
-    # Convert to numpy and then to list for JSON serialization
-    embedder = load_embedder(model_name=request.model)
-    embeddings = embedder.batch_embed(request.texts, config=request.config)
-    return BatchEmbedResponse(
-        model=request.model,
-        embeddings=embeddings,
-        count=len(embeddings),
-        dimensions=(
-            len(embeddings[0][0])
-            if isinstance(embeddings[0], tuple)
-            else len(embeddings[0])
-            if embeddings else 0
-        ),
-        compute_time=(datetime.now() - start).total_seconds()
-    )
+    return embedder.batch_embed(request)
 
 
-@app.post("/count_tokens")
-def count_tokens_(request: TokensCountRequest) -> TokensCountResponse:
+@api.post("/count_tokens")
+def count_tokens_(request: embedder.TokensCountRequest) -> embedder.TokensCountResponse:
     """
     Count the number of tokens in a batch of texts
-
-    Args:
-        request: The request containing
-
-    Returns:
-        TokensCountResponse: The number of tokens in each text
     """
-    start = datetime.now()
-    embedder = load_embedder(model_name=request.model)
-    return TokensCountResponse(
-        model=request.model,
-        tokens_count=[embedder.count_tokens(text) for text in request.texts],
-        compute_time=(datetime.now() - start).total_seconds()
-    )
+    return embedder.count_tokens(request)
