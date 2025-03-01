@@ -1,13 +1,144 @@
-# Vector DB playground
+# Embedding Service
 
-[![Build & Deploy to Cloud Run](https://github.com/codeinchq/sophos-vector/actions/workflows/cloudrun.yaml/badge.svg)](https://github.com/codeinchq/sophos-vector/actions/workflows/cloudrun.yaml)
+A FastAPI-based service for generating sparse and dense embeddings from text.
 
-This project is a playground for the new vector based Sophos' search engine. 
+## Overview
 
-## Tools
+This service provides an API for transforming text into vector embeddings, with support for both sparse and dense embedding models. It's designed to be efficient and scalable, with endpoints for batch processing and token counting.
 
-* [phpMyAdmin](http://localhost:81/index.php?route=/database/structure&db=sophos_vector) (dev)
-* [phpMyAdmin](https://phpmyadmin-282613225984.europe-west4.run.app) (test)
-* [Qdrant](http://localhost:6333/dashboard#/collections)
-* [MinIO](http://localhost:9001/login)
-* [RabbitMQ](http://localhost:15672/)
+## Features
+
+- Generate embeddings from text using configurable models
+- Batch processing capabilities for handling multiple texts at once
+- Token counting for input texts
+- Detailed response metrics including computation time
+- Health check and service information endpoint
+
+## API Endpoints
+
+### Root Endpoint (`GET /`)
+
+Returns basic information about the service:
+- Version
+- Build ID
+- Commit SHA
+- Uptime in seconds
+- Available embedding models
+- Device information
+
+### Batch Embedding (`POST /batch_embed`)
+
+Process a batch of texts to generate embeddings:
+
+```json
+{
+   "model": "model_name",
+   "texts": ["text1", "text2", "..."],
+   "config": { "optional_configuration_parameters": "..." }
+}
+```
+
+Response includes:
+- Model name
+- Generated embeddings
+- Count of processed items
+- Dimensions of the generated embeddings
+- Computation time
+
+### Token Counting (`POST /count_tokens`)
+
+Count the number of tokens in a batch of texts:
+
+```json
+{
+   "model": "model_name",
+   "texts": ["text1", "text2", "..."]
+}
+```
+
+Response includes:
+- Model name
+- Token count for each text
+- Computation time
+
+## Configuration
+
+The service is configured through environment variables managed by the `Config` class. Key configurations include:
+
+- `APP_VERSION`: Service version
+- `APP_BUILD_ID`: Build identifier
+- `APP_COMMIT_SHA`: Git commit SHA
+- `ENABLED_MODELS`: List of available embedding models
+
+## Requirements
+
+- Python 3.x
+- FastAPI
+- Additional dependencies defined in `requirements.txt`
+
+## Running the Service
+
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Start the service:
+   ```bash
+   uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+
+3. Access the API documentation at `http://localhost:8000/docs`
+
+## Usage Examples
+
+### Generate Embeddings with Python
+
+```python
+import requests
+
+response = requests.post(
+   "http://localhost:8000/batch_embed",
+   json={
+      "model": "default_model",
+      "texts": ["This is a sample text", "Another example"]
+   }
+)
+
+embeddings = response.json()["embeddings"]
+```
+
+### Curl Examples
+
+#### Get Service Information
+
+```bash
+curl -X GET http://localhost:8000/
+```
+
+#### Generate Embeddings
+
+```bash
+curl -X POST http://localhost:8000/batch_embed \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "default_model",
+    "texts": ["This is a sample text", "Another example text"],
+    "config": {}
+  }'
+```
+
+#### Count Tokens
+
+```bash
+curl -X POST http://localhost:8000/count_tokens \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "default_model",
+    "texts": ["This is a sample text", "Another example text"]
+  }'
+```
+
+## License
+
+The software is distributed un the MIT License. See the [LICENCE](LICENCE) file for more information.
