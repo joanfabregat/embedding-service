@@ -1,11 +1,12 @@
-# Copyright (c) 2025 Joan Fabrégat <j@fabreg.at>
-# Permission is hereby granted, free of charge, to any person
-# obtaining a copy of this software and associated documentation
-# files (the "Software"), to deal in the Software without
-# restriction, subject to the conditions in the full MIT License.
-# The Software is provided "as is", without warranty of any kind.
+#  Copyright (c) 2025 Joan Fabrégat <j@fabreg.at>
+#  Permission is hereby granted, free of charge, to any person
+#  obtaining a copy of this software and associated documentation
+#  files (the "Software"), to deal in the Software without
+#  restriction, subject to the conditions in the full MIT License.
+#  The Software is provided "as is", without warranty of any kind.
 
 import numpy as np
+import re
 from fastembed import SparseTextEmbedding
 
 from app.logging import logger
@@ -122,7 +123,7 @@ class BM42Embedder(BaseEmbedder):
             # Combine windows for each long text
             for orig_idx, window_vectors in text_to_windows.items():
                 if window_vectors:
-                    combined_vector = self._combine_sparse_vectors(window_vectors, request.combine_strategy)
+                    combined_vector = self._combine_sparse_vectors(window_vectors, request.window_combine_strategy)
                     result_vectors[orig_idx] = combined_vector
                 else:
                     result_vectors[orig_idx] = None if request.allow_null_vector else ([], [])
@@ -144,55 +145,30 @@ class BM42Embedder(BaseEmbedder):
         Returns:
             List of text windows
         """
-        try:
-            # Use the model's tokenizer for accurate splitting
-            tokenizer = self.model.tokenizer
-            tokens = tokenizer.encode(text)
+        # Use a simple word-based approach with estimated token counts
+        # Most tokenizers treat words as roughly 1.3 tokens on average
+        tokens_per_word = 1.3
+        words = re.findall(r'\w+|[^\w\s]', text)
 
-            # If text fits in a single window, return it directly
-            if len(tokens) <= window_size:
-                return [text]
+        # Estimate the word counts based on token limits
+        estimated_window_size = int(window_size / tokens_per_word)
+        estimated_overlap = int(window_overlap / tokens_per_word)
 
-            # Create overlapping windows of tokens
-            step_size = window_size - window_overlap
-            window_indices = [(i, min(i + window_size, len(tokens)))
-                              for i in range(0, len(tokens), step_size)]
+        # If text fits in a single window, return it directly
+        if len(words) <= estimated_window_size:
+            return [text]
 
-            # Convert token indices back to text
-            windows = []
-            for start, end in window_indices:
-                window_tokens = tokens[start:end]
-                window_text = tokenizer.decode(window_tokens)
-                windows.append(window_text)
+        # Create overlapping windows
+        windows = []
+        step_size = estimated_window_size - estimated_overlap
 
-            logger.info(f"Split text into {len(windows)} windows (token count: {len(tokens)})")
-            return windows
+        for i in range(0, len(words), max(1, int(step_size))):
+            window_words = words[i:i + estimated_window_size]
+            window_text = ' '.join(window_words)
+            windows.append(window_text)
 
-        except (AttributeError, TypeError):
-            # Fallback to a simpler approach using rough token estimation
-            import re
-            words = re.findall(r'\w+|[^\w\s]', text)
-
-            # Estimate tokens per word (typically around 1.3)
-            tokens_per_word = 1.3
-            estimated_window_size = int(window_size / tokens_per_word)
-            estimated_overlap = int(window_overlap / tokens_per_word)
-
-            # If text fits in a single window, return it directly
-            if len(words) <= estimated_window_size:
-                return [text]
-
-            # Create overlapping windows
-            windows = []
-            step_size = estimated_window_size - estimated_overlap
-
-            for i in range(0, len(words), step_size):
-                window_words = words[i:i + estimated_window_size]
-                window_text = ' '.join(window_words)
-                windows.append(window_text)
-
-            logger.info(f"Split text into {len(windows)} windows using word-based estimation")
-            return windows
+        logger.info(f"Split text into {len(windows)} windows using word-based estimation")
+        return windows
 
     @staticmethod
     def _combine_sparse_vectors(
@@ -303,8 +279,13 @@ class BM42Embedder(BaseEmbedder):
             tokens_count=[self._count_string_tokens(text) for text in request.texts],
         )
 
-    def _count_string_tokens(self, string: str) -> int:
+    @staticmethod
+    def _count_string_tokens(string: str) -> int:
         """
         Count the number of tokens in a text string.
+        This is an estimation since we don't have direct access to the tokenizer.
         """
-        return len(self.model.tokenizer.encode(string))
+        # Use a simple estimation based on word count
+        # Most tokenizers treat words as roughly 1.3 tokens on average
+        words = re.findall(r'\w+|[^\w\s]', string)
+        return int(len(words) * 1.3)
