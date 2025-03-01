@@ -74,8 +74,6 @@ jobs:
             ${{ env.DOCKERHUB_IMAGE }}
             ${{ env.GHCR_IMAGE }}
           tags: |
-#            type=ref,event=branch,suffix=${{ matrix.model.tag_suffix }}
-#            type=ref,event=pr,suffix=${{ matrix.model.tag_suffix }}
             type=semver,pattern={{version}},suffix=${{ matrix.model.tag_suffix }}
             type=semver,pattern={{major}}.{{minor}},suffix=${{ matrix.model.tag_suffix }}
             type=sha,suffix=${{ matrix.model.tag_suffix }}
