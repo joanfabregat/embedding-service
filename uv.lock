@@ -100,17 +100,13 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-bm42 = [
-    { name = "fastembed" },
-]
 dev = [
     { name = "pytest" },
 ]
-e5 = [
-    { name = "torch" },
-    { name = "transformers" },
+fastembed = [
+    { name = "fastembed" },
 ]
-jina = [
+transformers = [
     { name = "torch" },
     { name = "transformers" },
 ]
@@ -124,13 +120,9 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-bm42 = [{ name = "fastembed" }]
 dev = [{ name = "pytest" }]
-e5 = [
-    { name = "torch" },
-    { name = "transformers" },
-]
-jina = [
+fastembed = [{ name = "fastembed" }]
+transformers = [
     { name = "torch" },
     { name = "transformers" },
 ]
