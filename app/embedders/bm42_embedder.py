@@ -29,6 +29,7 @@ class BM42Embedder(BaseEmbedder):
     # Define a default overlap for the sliding window (in tokens)
     DEFAULT_WINDOW_OVERLAP = 100
     EMBEDDING_TYPE = SparseVector
+    DEVICE = "cpu"
 
     class BatchEmbedRequest(BaseEmbedder.BatchEmbedRequest):
         sparsity_threshold: float = 0.005
@@ -39,12 +40,6 @@ class BM42Embedder(BaseEmbedder):
 
     class BatchEmbedResponse(BaseEmbedder.BatchEmbedResponse):
         embeddings: list[SparseVector | None]
-
-    class TokensCountRequest(BaseEmbedder.TokensCountRequest):
-        pass
-
-    class TokensCountResponse(BaseEmbedder.TokensCountResponse):
-        pass
 
     def __init__(self):
         """
@@ -298,7 +293,7 @@ class BM42Embedder(BaseEmbedder):
 
         return filtered_indices, filtered_values
 
-    def count_tokens(self, request: TokensCountRequest) -> TokensCountResponse:
+    def count_tokens(self, request: BaseEmbedder.TokensCountRequest) -> BaseEmbedder.TokensCountResponse:
         """
         Count the number of tokens in a batch of texts.
         """
@@ -312,6 +307,4 @@ class BM42Embedder(BaseEmbedder):
         """
         Count the number of tokens in a text string.
         """
-        tokenizer = self.model.tokenizer
-        return len(tokenizer.encode(string))
-
+        return len(self.model.tokenizer.encode(string))

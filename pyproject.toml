@@ -9,7 +9,7 @@ name = "embedding-service"
 version = "v0.1.0"
 description = "API for generating sparse and dense embeddings from text"
 authors = [
-    { name = "Joan Fabrégat", email = "jfabregat@fogandfrog.com" }
+    { name = "Joan Fabrégat", email = "j@fabreg.at" }
 ]
 requires-python = ">=3.13"
 dependencies = [
@@ -23,14 +23,10 @@ dependencies = [
 dev = [
     "pytest",
 ]
-jina = [
+transformers = [
     "transformers",
     "torch",
 ]
-e5 = [
-    "transformers",
-    "torch",
-]
-bm42 = [
+fastembed = [
     "fastembed",
 ]

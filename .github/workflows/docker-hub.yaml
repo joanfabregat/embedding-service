@@ -25,13 +25,13 @@ jobs:
         model:
           - name: "bm42"
             tag_suffix: "-bm42"
-            dependencies_group: "bm42"
+            dependencies_group: "fastembed"
           - name: "jina_embeddings_v3"
             tag_suffix: "-jina"
-            dependencies_group: "jina"
+            dependencies_group: "transformers"
           - name: "e5_large_v2"
             tag_suffix: "-e5"
-            dependencies_group: "e5"
+            dependencies_group: "transformers"
 
     steps:
       - name: Checkout repository
@@ -39,15 +39,15 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Free up disk space
-        run: |
-          df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          docker system prune -af
-          df -h
+#      - name: Free up disk space
+#        run: |
+#          df -h
+#          sudo rm -rf /usr/share/dotnet
+#          sudo rm -rf /usr/local/lib/android
+#          sudo rm -rf /opt/ghc
+#          sudo rm -rf /opt/hostedtoolcache/CodeQL
+#          docker system prune -af
+#          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2

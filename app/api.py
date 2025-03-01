@@ -10,19 +10,18 @@ from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from app.config import Config
+from app.config import VERSION, BUILD_ID, EMBEDDING_MODEL, COMMIT_SHA
 from app.embedders import load_embedder
 from app.logging import logger
-from app.utils import get_device
 
-logger.info(f"Starting Embedding Service {Config.APP_VERSION} ({Config.APP_BUILD_ID})")
+logger.info(f"Starting Embedding Service {VERSION} ({BUILD_ID})")
 startup = datetime.now()
+embedder = load_embedder(EMBEDDING_MODEL)
 api = FastAPI(
     title="Embedding Service",
-    version=Config.APP_VERSION,
-    description="API for generating sparse and dense embeddings from text"
+    version=VERSION,
+    description=f"API for generating embeddings using the model {embedder.MODEL_NAME}",
 )
-embedder = load_embedder(Config.EMBEDDING_MODEL)
 
 
 class RootResponse(BaseModel):
@@ -38,12 +37,12 @@ class RootResponse(BaseModel):
 @api.get("/", response_model=RootResponse, tags=["root"])
 def root():
     return RootResponse(
-        version=Config.APP_VERSION,
-        build_id=Config.APP_BUILD_ID,
-        commit_sha=Config.APP_COMMIT_SHA,
+        version=VERSION,
+        build_id=BUILD_ID,
+        commit_sha=COMMIT_SHA,
         uptime=round((datetime.now() - startup).total_seconds()),
-        embedding_model=Config.EMBEDDING_MODEL,
-        device=get_device(),
+        embedding_model=embedder.MODEL_NAME,
+        device=embedder.DEVICE,
     )
 
 

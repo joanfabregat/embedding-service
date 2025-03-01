@@ -100,15 +100,19 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-dense-vector = [
-    { name = "torch" },
-    { name = "transformers" },
+bm42 = [
+    { name = "fastembed" },
 ]
 dev = [
     { name = "pytest" },
 ]
-sparse-vector = [
-    { name = "fastembed" },
+e5 = [
+    { name = "torch" },
+    { name = "transformers" },
+]
+jina = [
+    { name = "torch" },
+    { name = "transformers" },
 ]
 
 [package.metadata]
@@ -120,12 +124,16 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dense-vector = [
+bm42 = [{ name = "fastembed" }]
+dev = [{ name = "pytest" }]
+e5 = [
     { name = "torch" },
     { name = "transformers" },
 ]
-dev = [{ name = "pytest" }]
-sparse-vector = [{ name = "fastembed" }]
+jina = [
+    { name = "torch" },
+    { name = "transformers" },
+]
 
 [[package]]
 name = "fastapi"

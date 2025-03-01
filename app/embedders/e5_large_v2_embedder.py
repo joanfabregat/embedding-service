@@ -9,11 +9,10 @@ import torch
 from transformers import AutoTokenizer, AutoModel
 
 from app.logging import logger
-from app.utils import get_device
-from .base_embedder import BaseEmbedder, DenseVector
+from .base_dense_embedder import BaseDenseEmbedder, DenseVector
 
 
-class E5LargeV2Embedder(BaseEmbedder):
+class E5LargeV2Embedder(BaseDenseEmbedder):
     """
     Embedder using the Multilingual E5 model
     https://huggingface.co/intfloat/e5-large-v2
@@ -23,27 +22,15 @@ class E5LargeV2Embedder(BaseEmbedder):
     MODEL_NAME = "intfloat/e5-large-v2"
     EMBEDDING_TYPE = DenseVector
 
-    class BatchEmbedRequest(BaseEmbedder.BatchEmbedRequest):
-        normalize: bool = True
-
-    class BatchEmbedResponse(BaseEmbedder.BatchEmbedResponse):
-        embeddings: list[DenseVector]
-
-    class TokensCountRequest(BaseEmbedder.TokensCountRequest):
-        pass
-
-    class TokensCountResponse(BaseEmbedder.TokensCountResponse):
-        pass
-
     def __init__(self):
         """Initialize the embedder."""
+        super().__init__()
         logger.info(f"Initializing E5 embedder with model {self.MODEL_NAME}")
-        self.device = get_device()
         self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
-        self.model = AutoModel.from_pretrained(self.MODEL_NAME).to(self.device)
+        self.model = AutoModel.from_pretrained(self.MODEL_NAME).to(self.DEVICE)
 
     # noinspection DuplicatedCode
-    def batch_embed(self, request: BatchEmbedRequest) -> BatchEmbedResponse:
+    def batch_embed(self, request: BaseDenseEmbedder.BatchEmbedRequest) -> BaseDenseEmbedder.BatchEmbedResponse:
         """Embed a batch of texts using the Multilingual E5 model."""
         logger.info(f"Embedding {len(request.texts)} texts using {self.MODEL_NAME}")
 
@@ -55,7 +42,7 @@ class E5LargeV2Embedder(BaseEmbedder):
                 prepared_texts.append(text)
 
         # Tokenize and prepare for model
-        inputs = self.tokenizer(prepared_texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer(prepared_texts, padding=True, truncation=True, return_tensors="pt").to(self.DEVICE)
 
         # Generate embeddings
         with torch.no_grad():
@@ -76,15 +63,4 @@ class E5LargeV2Embedder(BaseEmbedder):
         return self.BatchEmbedResponse(
             model=self.MODEL_NAME,
             embeddings=embeddings.cpu().numpy().tolist(),
-        )
-
-    def count_tokens(self, request: TokensCountRequest) -> TokensCountResponse:
-        """Count the number of tokens in a text."""
-        logger.info(f"Counting tokens for {request.texts} texts using {self.MODEL_NAME}")
-        return self.TokensCountResponse(
-            model=self.MODEL_NAME,
-            tokens_count=[
-                len(self.tokenizer.encode(text, add_special_tokens=False))
-                for text in request.texts
-            ]
         )

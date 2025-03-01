@@ -5,12 +5,12 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
-from app.config import Config
+from app.config import EMBEDDING_MODEL
 from app.logging import logger
 from .base_embedder import BaseEmbedder
 
 
-def load_embedder(model_name: str = Config.EMBEDDING_MODEL) -> BaseEmbedder:
+def load_embedder(model_name: str = EMBEDDING_MODEL) -> BaseEmbedder:
     """
     Load the embedder for the given name
 
@@ -24,7 +24,7 @@ def load_embedder(model_name: str = Config.EMBEDDING_MODEL) -> BaseEmbedder:
     return model_name()
 
 
-def get_embedder(model_name: Config.EMBEDDING_MODEL) -> type[BaseEmbedder]:
+def get_embedder(model_name: EMBEDDING_MODEL) -> type[BaseEmbedder]:
     """
     Get the embedder for the given name
 
@@ -35,9 +35,6 @@ def get_embedder(model_name: Config.EMBEDDING_MODEL) -> type[BaseEmbedder]:
         BaseEmbedder: The embedder
     """
     logger.info(f"Loading embedder for {model_name}")
-
-    if model_name not in Config.ENABLED_MODELS:
-        raise ValueError(f"Embedder {model_name} is not enabled")
 
     match model_name:
         case "bm42":

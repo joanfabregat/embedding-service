@@ -14,6 +14,7 @@ DenseVector = list[float]
 class BaseEmbedder:
     """Base class for embedders"""
     MODEL_NAME = ...
+    DEVICE = ...
 
     class BatchEmbedRequest(BaseModel):
         """Request schema for embeddings"""

@@ -11,11 +11,10 @@ import torch
 from transformers import AutoTokenizer, AutoModel
 
 from app.logging import logger
-from app.utils import get_device
-from .base_embedder import BaseEmbedder, DenseVector
+from .base_dense_embedder import BaseDenseEmbedder, DenseVector
 
 
-class JinaEmbeddingsV3Embedder(BaseEmbedder):
+class JinaEmbeddingsV3Embedder(BaseDenseEmbedder):
     """
     Embedder using the Jina embeddings v3 model
     https://huggingface.co/jinaai/jina-embeddings-v3
@@ -27,7 +26,7 @@ class JinaEmbeddingsV3Embedder(BaseEmbedder):
     DEFAULT_TASK = "retrieval.query"
     EMBEDDING_TYPE = DenseVector
 
-    class BatchEmbedRequest(BaseEmbedder.BatchEmbedRequest):
+    class BatchEmbedRequest(BaseDenseEmbedder.BatchEmbedRequest):
         class Task(str, enum.Enum):
             RETRIEVAL_QUERY = "retrieval.query"
             RETRIEVAL_PASSAGE = "retrieval.passage"
@@ -38,19 +37,10 @@ class JinaEmbeddingsV3Embedder(BaseEmbedder):
         normalize: bool = True
         task: Task = Task.RETRIEVAL_QUERY
 
-    class BatchEmbedResponse(BaseEmbedder.BatchEmbedResponse):
-        embeddings: list[DenseVector]
-
-    class TokensCountRequest(BaseEmbedder.TokensCountRequest):
-        pass
-
-    class TokensCountResponse(BaseEmbedder.TokensCountResponse):
-        pass
-
     def __init__(self):
         """Initialize the embedder."""
         logger.info(f"Initializing Jina embeddings v3 embedder with model {self.MODEL_NAME}")
-        self.device = get_device()
+        super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.MODEL_NAME,
             trust_remote_code=True,
@@ -60,15 +50,15 @@ class JinaEmbeddingsV3Embedder(BaseEmbedder):
             self.MODEL_NAME,
             trust_remote_code=True,
             revision=self.REVISION
-        ).to(self.device)
+        ).to(self.DEVICE)
 
     # noinspection DuplicatedCode
-    def batch_embed(self, request: BatchEmbedRequest) -> BatchEmbedResponse:
+    def batch_embed(self, request: BatchEmbedRequest) -> BaseDenseEmbedder.BatchEmbedResponse:
         """Get embeddings for a batch of texts"""
         logger.info(f"Embedding {len(request.texts)} texts using {self.MODEL_NAME}")
 
         # Tokenize and prepare for model
-        inputs = self.tokenizer(request.texts, padding=True, truncation=True, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer(request.texts, padding=True, truncation=True, return_tensors="pt").to(self.DEVICE)
 
         # Generate embeddings
         with torch.no_grad():
@@ -89,11 +79,4 @@ class JinaEmbeddingsV3Embedder(BaseEmbedder):
         return self.BatchEmbedResponse(
             model=self.MODEL_NAME,
             embeddings=embeddings.cpu().numpy().tolist()
-        )
-
-    def count_tokens(self, request: TokensCountRequest) -> TokensCountResponse:
-        """Count the number of tokens in a text."""
-        return self.TokensCountResponse(
-            model=self.MODEL_NAME,
-            tokens_count=[len(self.tokenizer.tokenize(text)) for text in request.texts]
         )

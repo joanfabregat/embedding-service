@@ -18,7 +18,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install uv and its dependencies
-COPY --from=ghcr.io/astral-sh/uv:0.5.31 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN chmod +x /bin/uv /bin/uvx && \
     uv venv .venv
 ENV PATH="/app/.venv/bin:$PATH"
@@ -65,7 +65,7 @@ USER app
 # Download the models
 ENV HF_HOME=/app/cache
 RUN mkdir -p /app/cache && chmod 777 /app/cache && \
-    python -m app.bin.download_model
+    python -m app.download_model
 
 # https://cloud.google.com/run/docs/tips/python#optimize_gunicorn
 EXPOSE $PORT
