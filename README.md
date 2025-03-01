@@ -1,5 +1,7 @@
 # Embedding Service
 
+[![Build and Push Docker Image](https://github.com/codeinchq/embedding-service/actions/workflows/docker-hub.yaml/badge.svg)](https://github.com/codeinchq/embedding-service/actions/workflows/docker-hub.yaml)
+
 A FastAPI-based service for generating sparse and dense embeddings from text.
 
 ## Overview
@@ -60,21 +62,6 @@ Response includes:
 - Model name
 - Token count for each text
 - Computation time
-
-## Configuration
-
-The service is configured through environment variables managed by the `Config` class. Key configurations include:
-
-- `APP_VERSION`: Service version
-- `APP_BUILD_ID`: Build identifier
-- `APP_COMMIT_SHA`: Git commit SHA
-- `ENABLED_MODELS`: List of available embedding models
-
-## Requirements
-
-- Python 3.x
-- FastAPI
-- Additional dependencies defined in `requirements.txt`
 
 ## Running the Service
 
