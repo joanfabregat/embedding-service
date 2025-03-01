@@ -1,7 +1,13 @@
-#  Copyright (c) 2025 Code Inc. - All Rights Reserved
-#  Unauthorized copying of this file, via any medium is strictly prohibited
-#  Proprietary and confidential
-#  Visit <https://www.codeinc.co> for more information
+#
+#  @file download_models.py
+#  @copyright Copyright (c) 2025 Fog&Frog
+#  @author Joan Fabrégat <j@fabreg.at>
+#  @license MIT
+#
+#  This source code is licensed under the MIT license found in the
+#  LICENSE file in the root directory of this source tree.
+#
+
 
 from datetime import datetime
 
@@ -14,7 +20,7 @@ def download_models():
     """
     Download the models
     """
-    logger.info(f"ℹ️ Downloading {len(Config.ENABLED_MODELS)} enabled models")
+    logger.info(f"ℹ️ Downloading {len(Config.ENABLED_MODELS)} enabled models: {Config.ENABLED_MODELS}")
     for model in Config.ENABLED_MODELS:
         logger.info(f"💽 Downloading model {model}")
         start = datetime.now()
