@@ -16,23 +16,22 @@ on:
 
 env:
   BASE_IMAGE: "joanfabregat/embedding-service"
-  MODELS:
-    - name: "bm42"
-      tag_suffix: "-bm42"
-      dependencies_group: "bm42"
-    - name: "jina_embeddings_v3"
-      tag_suffix: "-jina"
-      dependencies_group: "jina"
-    - name: "e5_large_v2"
-      tag_suffix: "-e5"
-      dependencies_group: "e5"
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        model: env.MODELS
+        model:
+          - name: "bm42"
+            tag_suffix: "-bm42"
+            dependencies_group: "bm42"
+          - name: "jina_embeddings_v3"
+            tag_suffix: "-jina"
+            dependencies_group: "jina"
+          - name: "e5_large_v2"
+            tag_suffix: "-e5"
+            dependencies_group: "e5"
 
     steps:
       - name: Checkout repository
