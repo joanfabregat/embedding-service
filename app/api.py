@@ -14,6 +14,9 @@ from app.config import VERSION, BUILD_ID, EMBEDDING_MODEL, COMMIT_SHA
 from app.embedders import load_embedder
 from app.logging import logger
 
+if not EMBEDDING_MODEL:
+    raise ValueError("No embedding model specified")
+
 logger.info(f"Starting Embedding Service {VERSION} ({BUILD_ID})")
 startup = datetime.now()
 embedder = load_embedder(EMBEDDING_MODEL)
