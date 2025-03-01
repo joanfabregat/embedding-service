@@ -51,12 +51,17 @@ def batch_embed(request: BatchEmbedRequest) -> BatchEmbedResponse:
 
     # Convert to numpy and then to list for JSON serialization
     embedder = load_embedder(model_name=request.model)
-    embeddings = embedder.batch_embed(request.texts, normalize=request.normalize, task=request.task)
+    embeddings = embedder.batch_embed(request.texts, config=request.config)
     return BatchEmbedResponse(
         model=request.model,
         embeddings=embeddings,
         count=len(embeddings),
-        dimensions=len(embeddings[0]) if embeddings else 0,
+        dimensions=(
+            len(embeddings[0][0])
+            if isinstance(embeddings[0], tuple)
+            else len(embeddings[0])
+            if embeddings else 0
+        ),
         compute_time=(datetime.now() - start).total_seconds()
     )
 
