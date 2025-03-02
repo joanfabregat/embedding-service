@@ -2,25 +2,64 @@
 
 [![Build and Push Docker Image](https://github.com/codeinchq/embedding-service/actions/workflows/docker-hub.yaml/badge.svg)](https://github.com/codeinchq/embedding-service/actions/workflows/docker-hub.yaml)
 
-A FastAPI-based service for generating sparse and dense embeddings from text.
+A FastAPI-based service for generating sparse and dense embeddings from text written in Python 3.13.
 
 ## Overview
 
-This service provides an API for transforming text into vector embeddings, with support for both sparse and dense embedding models. It's designed to be efficient and scalable, with endpoints for batch processing and token counting.
+This service provides an API for transforming text into vector embeddings, with support for both sparse and dense
+embedding models. It's designed to be efficient and scalable, with endpoints for batch processing and token counting.
 
-## Features
+### Supported models
 
-- Generate embeddings from text using configurable models
-- Batch processing capabilities for handling multiple texts at once
-- Token counting for input texts
-- Detailed response metrics including computation time
-- Health check and service information endpoint
+The service supports the following models for generating embeddings:
+
+- **jina** ([`jinaai/jina-embeddings-v3`](https://huggingface.co/jinaai/jina-embeddings-v3)) for dense embeddings up to
+  8192 tokens
+- **e5** ([`intfloat/e5-large-v2`](https://huggingface.co/intfloat/e5-large-v2)) for dense embeddings up to 512 tokens
+- **bm42** ([`Qdrant/bm42-all-minilm-l6-v2-attentions`](https://qdrant.tech/articles/bm42/)) for sparse embeddings using
+  Qdrant's BM42 model
+
+### Availability
+
+The service is available as a Docker container on Docker Hub and GitHub Container Registry:
+
+- Docker Hub: [`joanfabregat/embedding-service:latest`](https://hub.docker.com/r/joanfabregat/embedding-service)
+- GitHub Container Registry: `ghcr.io/joanfabregat/embedding-service:latest`
+
+The model is configured at build time through the `EMBEDDING_MODEL` build arg and can not be changed without rebuilding
+the service. The service is built for each supported model and can be deployed independently.
+
+#### Each version is tagged:
+
+- `*model_name*-latest` for the latest version of the service with the specified model
+- `*model_name*-v0.1.0` for a specific version of the service with the specified model
+
+## Running the Service
+
+The service can be run locally or deployed using Docker.
+
+### Local Build and Deployment
+
+```shell
+docker build --build-arg EMBEDDING_MODEL=jina -t embedding-jina .
+docker run -p 8000:8000 embedding-jina
+```
+
+### Deployment from Docker Hub or GitHub Container Registry
+
+```shell
+docker run -p 8000:8000 ghcr.io/joanfabregat/embedding-service:jina-latest
+docker run -p 8000:8000 joanfabregat/embedding-service:jina-latest
+```
 
 ## API Endpoints
+
+The documentation for the API endpoints is available at `/docs` or `/redoc` when running the service.
 
 ### Root Endpoint (`GET /`)
 
 Returns basic information about the service:
+
 - Version
 - Build ID
 - Commit SHA
@@ -34,13 +73,19 @@ Process a batch of texts to generate embeddings:
 
 ```json
 {
-   "model": "model_name",
-   "texts": ["text1", "text2", "..."],
-   "config": { "optional_configuration_parameters": "..." }
+  "texts": [
+    "text1",
+    "text2",
+    "..."
+  ],
+  "settings": {
+    "optional_configuration_parameters": "..."
+  }
 }
 ```
 
 Response includes:
+
 - Model name
 - Generated embeddings
 - Count of processed items
@@ -53,31 +98,23 @@ Count the number of tokens in a batch of texts:
 
 ```json
 {
-   "model": "model_name",
-   "texts": ["text1", "text2", "..."]
+  "texts": [
+    "text1",
+    "text2",
+    "..."
+  ]
 }
 ```
 
 Response includes:
+
 - Model name
 - Token count for each text
 - Computation time
 
-## Running the Service
-
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. Start the service:
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
-
-3. Access the API documentation at `http://localhost:8000/docs`
-
 ## Usage Examples
+
+The following examples are for the Jina dense embeddings model.
 
 ### Generate Embeddings with Python
 
@@ -85,11 +122,14 @@ Response includes:
 import requests
 
 response = requests.post(
-   "http://localhost:8000/batch_embed",
-   json={
-      "model": "default_model",
-      "texts": ["This is a sample text", "Another example"]
-   }
+    "http://localhost:8000/batch_embed",
+    json={
+        "texts": ["This is a sample text", "Another example"],
+        "settings": {
+            "normalize": True,
+            "task": "retrieval.query",
+        }
+    }
 )
 
 embeddings = response.json()["embeddings"]
@@ -109,9 +149,11 @@ curl -X GET http://localhost:8000/
 curl -X POST http://localhost:8000/batch_embed \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "default_model",
     "texts": ["This is a sample text", "Another example text"],
-    "config": {}
+    "settings": {
+      "normalize": true,
+      "task": "retrieval.query"
+    }
   }'
 ```
 
@@ -121,7 +163,6 @@ curl -X POST http://localhost:8000/batch_embed \
 curl -X POST http://localhost:8000/count_tokens \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "default_model",
     "texts": ["This is a sample text", "Another example text"]
   }'
 ```
