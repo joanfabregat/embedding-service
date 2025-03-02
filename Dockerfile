@@ -32,7 +32,7 @@ RUN uv sync --frozen --group ${DEPENDENCIES_GROUP}
 FROM python:3.13-slim-bookworm
 WORKDIR /app
 
-ARG PORT=80
+ARG PORT=8000
 ARG EMBEDDING_MODEL
 ARG APP_ENV=production
 ARG APP_VERSION
