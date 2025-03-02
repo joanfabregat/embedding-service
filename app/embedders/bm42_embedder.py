@@ -245,6 +245,10 @@ class BM42Embedder(BaseEmbedder):
         """
         indices, values = sparse_vector
 
+        # Check if values is empty before proceeding
+        if not values:
+            return ([], []) if not allow_null_vector else None
+
         filtered_indices: list[int] = []
         filtered_values: list[float] = []
         for i, value in enumerate(values):
@@ -257,9 +261,14 @@ class BM42Embedder(BaseEmbedder):
             if allow_null_vector:
                 return None
             else:
-                max_idx = np.argmax(np.abs(values))
-                filtered_indices = [indices[max_idx]]
-                filtered_values = [values[max_idx]]
+                # Only try to find max if values is not empty
+                if values:
+                    max_idx = np.argmax(np.abs(values))
+                    filtered_indices = [indices[max_idx]]
+                    filtered_values = [values[max_idx]]
+                else:
+                    # Return empty lists if values is empty
+                    return [], []
 
         return filtered_indices, filtered_values
 
