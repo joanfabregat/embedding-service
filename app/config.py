@@ -7,7 +7,7 @@
 
 import os
 
-VERSION = os.getenv("VERSION", "v0.0")
-BUILD_ID = os.getenv("BUILD_ID", "000000")
-COMMIT_SHA = os.getenv("COMMIT_SHA", "000000")
+VERSION = os.getenv("VERSION") or "v0.0"
+BUILD_ID = os.getenv("BUILD_ID") or "000000"
+COMMIT_SHA = os.getenv("COMMIT_SHA") or "000000"
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
