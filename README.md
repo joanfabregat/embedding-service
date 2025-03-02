@@ -24,7 +24,7 @@ The service supports the following models for generating embeddings:
 The service is available as a Docker container on Docker Hub and GitHub Container Registry:
 
 - Docker Hub: [`joanfabregat/embedding-service:latest`](https://hub.docker.com/r/joanfabregat/embedding-service)
-- GitHub Container Registry: `ghcr.io/joanfabregat/embedding-service:latest`
+- GitHub Container Registry: [`ghcr.io/joanfabregat/embedding-service:latest`](https://github.com/joanfabregat/embedding-service/pkgs/container/embedding-service)
 
 The model is configured at build time through the `EMBEDDING_MODEL` build arg and can not be changed without rebuilding
 the service. The service is built for each supported model and can be deployed independently.
