@@ -5,22 +5,29 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
+import enum
 import torch
 from transformers import AutoTokenizer, AutoModel
 
 from app.logging import logger
-from .base_dense_embedder import BaseDenseEmbedder, DenseVector
+from app.models import DenseVector
+from .base_transformer_embedder import BaseTransformerEmbedder
 
 
-class E5LargeV2Embedder(BaseDenseEmbedder):
+class E5Embedder(BaseTransformerEmbedder):
     """
     Embedder using the Multilingual E5 model
     https://huggingface.co/intfloat/e5-large-v2
     """
 
-    DEFAULT_NORMALIZE = True
     MODEL_NAME = "intfloat/e5-large-v2"
-    EMBEDDING_TYPE = DenseVector
+
+    class Settings(BaseTransformerEmbedder.Settings):
+        class Task(str, enum.Enum):
+            QUERY: str = "query"
+            PASSAGE: str = "passage"
+
+        task: Task = Task.QUERY
 
     def __init__(self):
         """Initialize the embedder."""
@@ -30,14 +37,18 @@ class E5LargeV2Embedder(BaseDenseEmbedder):
         self.model = AutoModel.from_pretrained(self.MODEL_NAME).to(self.DEVICE)
 
     # noinspection DuplicatedCode
-    def batch_embed(self, request: BaseDenseEmbedder.BatchEmbedRequest) -> BaseDenseEmbedder.BatchEmbedResponse:
+    def batch_embed(self, texts: list[str], settings: Settings = None) -> list[DenseVector]:
         """Embed a batch of texts using the Multilingual E5 model."""
-        logger.info(f"Embedding {len(request.texts)} texts using {self.MODEL_NAME}")
+        logger.info(f"Embedding {len(texts)} texts using {self.MODEL_NAME}")
+
+        if settings is None:
+            settings = self.Settings()
 
         prepared_texts = []
-        for text in request.texts:
-            if not text.startswith(("query:", "passage:")):
-                prepared_texts.append(f"passage: {text}")
+        supported_prefixes = (f"{self.Settings.Task.QUERY.value}:", f"{self.Settings.Task.PASSAGE.value}:")
+        for text in texts:
+            if not text.startswith(supported_prefixes):
+                prepared_texts.append(f"{settings.task.value}: {text}")
             else:
                 prepared_texts.append(text)
 
@@ -56,11 +67,8 @@ class E5LargeV2Embedder(BaseDenseEmbedder):
                 / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
         )
 
-        if request.normalize:
+        if settings.normalize:
             embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
 
         # Convert to numpy and then to list for JSON serialization
-        return self.BatchEmbedResponse(
-            model=self.MODEL_NAME,
-            embeddings=embeddings.cpu().numpy().tolist(),
-        )
+        return embeddings.cpu().numpy().tolist()

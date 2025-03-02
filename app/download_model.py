@@ -15,5 +15,5 @@ if __name__ == "__main__":
     logger.info(f"💽 Downloading model {EMBEDDING_MODEL}")
     start = datetime.now()
     embedder = load_embedder(EMBEDDING_MODEL)
-    embedder.batch_embed(request=embedder.BatchEmbedRequest(texts=["hello", "world"]))
+    embedder.batch_embed(texts=["hello", "world"])
     logger.info(f"✅ Finished downloading model {EMBEDDING_MODEL} in {(datetime.now() - start).total_seconds()}s")

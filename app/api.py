@@ -8,11 +8,11 @@
 from datetime import datetime
 
 from fastapi import FastAPI
-from pydantic import BaseModel
 
 from app.config import VERSION, BUILD_ID, EMBEDDING_MODEL, COMMIT_SHA
 from app.embedders import load_embedder
 from app.logging import logger
+from app.models import RootResponse, BatchEmbedRequest, BatchEmbedResponse, TokensCountRequest, TokensCountResponse
 
 if not EMBEDDING_MODEL:
     raise ValueError("No embedding model specified")
@@ -25,16 +25,6 @@ api = FastAPI(
     version=VERSION,
     description=f"API for generating embeddings using the model {embedder.MODEL_NAME}",
 )
-
-
-class RootResponse(BaseModel):
-    """Response schema for root endpoint"""
-    version: str
-    build_id: str
-    commit_sha: str
-    uptime: float
-    embedding_model: str
-    device: str
 
 
 @api.get("/", response_model=RootResponse, tags=["root"])
@@ -50,17 +40,42 @@ def root():
 
 
 # Process batch of texts to embeddings
-@api.post("/batch_embed", response_model=embedder.BatchEmbedResponse)
-def batch_embed(request: embedder.BatchEmbedRequest) -> embedder.BatchEmbedResponse:
+@api.post("/batch_embed", response_model=BatchEmbedResponse)
+def batch_embed(request: BatchEmbedRequest[embedder.Settings]) -> BatchEmbedResponse:
     """
     Get embeddings for a batch of texts
     """
-    return embedder.batch_embed(request)
+    logger.info(f"Embedding {len(request.texts)} texts")
+    start_time = datetime.now()
+    embeddings = embedder.batch_embed(request.texts, request.settings)
+    response = BatchEmbedResponse(
+        model_name=embedder.MODEL_NAME,
+        embeddings=embeddings,
+        compute_time=(datetime.now() - start_time).total_seconds(),
+        count=len(embeddings),
+        dimensions=(
+            len(embeddings[0][0])
+            if isinstance(embeddings[0], tuple)
+            else len(embeddings[0])
+            if embeddings else 0
+        )
+    )
+    logger.info(f"Computed embeddings in {response.compute_time:.2f}s")
+    return response
 
 
 @api.post("/count_tokens")
-def count_tokens_(request: embedder.TokensCountRequest) -> embedder.TokensCountResponse:
+def count_tokens_(request: TokensCountRequest) -> TokensCountResponse:
     """
     Count the number of tokens in a batch of texts
     """
-    return embedder.count_tokens(request)
+    logger.info(f"Counting {len(request.texts)} tokens")
+    start_time = datetime.now()
+    tokens_count = embedder.batch_count_tokens(request.texts)
+    response = TokensCountResponse(
+        model_name=embedder.MODEL_NAME,
+        tokens_count=tokens_count,
+        compute_time=(datetime.now() - start_time).total_seconds(),
+    )
+    logger.info(f"Computed tokens in {response.compute_time:.2f}s")
+    return response

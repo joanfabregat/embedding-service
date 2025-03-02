@@ -8,27 +8,21 @@
 import torch
 from transformers import PreTrainedTokenizer, PreTrainedModel
 
-from .base_embedder import BaseEmbedder, DenseVector
+from .base_embedder import BaseEmbedder
 
 
-class BaseDenseEmbedder(BaseEmbedder):
+class BaseTransformerEmbedder(BaseEmbedder):
     """Base class for dense embedders."""
     DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.mps.is_available() else "cpu"
 
-    class BatchEmbedRequest(BaseEmbedder.BatchEmbedRequest):
+    class Settings(BaseEmbedder.Settings):
         normalize: bool = True
-
-    class BatchEmbedResponse(BaseEmbedder.BatchEmbedResponse):
-        embeddings: list[DenseVector]
 
     def __init__(self):
         """Initialize the embedder."""
         self.tokenizer: PreTrainedTokenizer = ...
         self.model: PreTrainedModel = ...
 
-    def count_tokens(self, request: BaseEmbedder.TokensCountRequest) -> BaseEmbedder.TokensCountResponse:
+    def count_tokens(self, text: str) -> int:
         """Count the number of tokens in a text."""
-        return self.TokensCountResponse(
-            model=self.MODEL_NAME,
-            tokens_count=[len(self.tokenizer.tokenize(text)) for text in request.texts]
-        )
+        return len(self.tokenizer.tokenize(text))

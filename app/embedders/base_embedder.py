@@ -7,8 +7,7 @@
 
 from pydantic import BaseModel
 
-SparseVector = tuple[list[int], list[float]]
-DenseVector = list[float]
+from app.models import DenseVector, SparseVector
 
 
 class BaseEmbedder:
@@ -16,41 +15,20 @@ class BaseEmbedder:
     MODEL_NAME = ...
     DEVICE = ...
 
-    class BatchEmbedRequest(BaseModel):
-        """Request schema for embeddings"""
-        texts: list[str]
+    class Settings(BaseModel):
+        pass
 
-    class BatchEmbedResponse(BaseModel):
-        """Response schema for embeddings"""
-        model: str
-        embeddings: list[DenseVector | SparseVector]
-
-        @property
-        def count(self) -> int:
-            return len(self.embeddings)
-
-        @property
-        def dimensions(self) -> int:
-            return (
-                len(self.embeddings[0][0])
-                if isinstance(self.embeddings[0], tuple)
-                else len(self.embeddings[0])
-                if self.embeddings else 0
-            )
-
-    class TokensCountRequest(BaseModel):
-        """Request schema for tokens count"""
-        texts: list[str]
-
-    class TokensCountResponse(BaseModel):
-        """Response schema for tokens count"""
-        model: str
-        tokens_count: list[int]
-
-    def batch_embed(self, request: BatchEmbedRequest) -> BatchEmbedResponse:
+    def batch_embed(self, texts: list[str], settings: Settings = None) -> list[DenseVector | SparseVector | None]:
         """Embed a batch of texts."""
         raise NotImplementedError
 
-    def count_tokens(self, request: TokensCountRequest) -> TokensCountResponse:
+    def batch_count_tokens(self, texts: list[str]) -> list[int]:
+        """Count the number of tokens in a batch of texts."""
+        return [
+            self.count_tokens(text)
+            for text in texts
+        ]
+
+    def count_tokens(self, text: str) -> int:
         """Count the number of tokens in a text."""
         raise NotImplementedError

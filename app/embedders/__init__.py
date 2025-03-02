@@ -5,12 +5,11 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
-from app.config import EMBEDDING_MODEL
 from app.logging import logger
 from .base_embedder import BaseEmbedder
 
 
-def load_embedder(model_name: str = EMBEDDING_MODEL) -> BaseEmbedder:
+def load_embedder(model_name: str) -> BaseEmbedder:
     """
     Load the embedder for the given name
 
@@ -24,7 +23,7 @@ def load_embedder(model_name: str = EMBEDDING_MODEL) -> BaseEmbedder:
     return model_name()
 
 
-def get_embedder(model_name: EMBEDDING_MODEL) -> type[BaseEmbedder]:
+def get_embedder(model_name: str) -> type[BaseEmbedder]:
     """
     Get the embedder for the given name
 
@@ -41,13 +40,13 @@ def get_embedder(model_name: EMBEDDING_MODEL) -> type[BaseEmbedder]:
             from .bm42_embedder import BM42Embedder
             return BM42Embedder
 
-        case "jina_embeddings_v3":
-            from .jina_embeddings_v3_embedder import JinaEmbeddingsV3Embedder
-            return JinaEmbeddingsV3Embedder
+        case "jina":
+            from .jina_embedder import JinaEmbedder
+            return JinaEmbedder
 
-        case "e5_large_v2":
-            from .e5_large_v2_embedder import E5LargeV2Embedder
-            return E5LargeV2Embedder
+        case "e5":
+            from .e5_embedder import E5Embedder
+            return E5Embedder
 
         case _:
             raise ValueError(f"Embedder {model_name} is not supported")

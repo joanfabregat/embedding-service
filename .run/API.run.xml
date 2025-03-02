@@ -6,7 +6,7 @@
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
-      <env name="EMBEDDING_MODEL" value="e5_large_v2" />
+      <env name="EMBEDDING_MODEL" value="jina" />
     </envs>
     <option name="SDK_HOME" value="$PROJECT_DIR$/.venv/bin/python" />
     <option name="SDK_NAME" value="Python 3.13 virtualenv at ~/Code/embedding-service/.venv" />
