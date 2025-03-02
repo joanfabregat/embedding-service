@@ -11,6 +11,8 @@ from pydantic import BaseModel
 
 DenseVector = list[float]
 SparseVector = tuple[list[int], list[float]]
+SettingsType = TypeVar('SettingsType')
+
 
 class RootResponse(BaseModel):
     """Response schema for root endpoint"""
@@ -21,12 +23,11 @@ class RootResponse(BaseModel):
     embedding_model: str
     device: str
 
-SettingsType = TypeVar('SettingsType')
 
 class BatchEmbedRequest(BaseModel, Generic[SettingsType]):
     """Request schema for embeddings"""
     texts: list[str]
-    settings: SettingsType
+    settings: SettingsType | None = None
 
 
 class BatchEmbedResponse(BaseModel):
