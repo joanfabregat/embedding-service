@@ -39,6 +39,9 @@ def root():
     )
 
 
+BATCH_SIZE = 100
+
+
 # Process batch of texts to embeddings
 @api.post("/batch_embed", response_model=BatchEmbedResponse)
 def batch_embed(request: BatchEmbedRequest[embedder.Settings]) -> BatchEmbedResponse:
@@ -47,7 +50,20 @@ def batch_embed(request: BatchEmbedRequest[embedder.Settings]) -> BatchEmbedResp
     """
     logger.info(f"Embedding {len(request.texts)} texts")
     start_time = datetime.now()
-    embeddings = embedder.batch_embed(request.texts, request.settings)
+
+    # If the batch is small enough, embed it in one go
+    if len(request.texts) <= BATCH_SIZE:
+        embeddings = embedder.batch_embed(request.texts, request.settings)
+
+    # Else, split the batch into smaller batches and embed them separately
+    else:
+        embeddings = []
+        for i in range(0, len(request.texts), BATCH_SIZE):
+            batch_texts = request.texts[i:i + BATCH_SIZE]
+            logger.info(f"Processing batch {i // BATCH_SIZE + 1} of {(len(request.texts) - 1) // BATCH_SIZE + 1}")
+            batch_embeddings = embedder.batch_embed(batch_texts, request.settings)
+            embeddings.extend(batch_embeddings)
+
     response = BatchEmbedResponse(
         embedding_model=embedder.MODEL_NAME,
         embeddings=embeddings,
