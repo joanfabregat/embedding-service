@@ -32,7 +32,7 @@ class BatchEmbedRequest(BaseModel, Generic[SettingsType]):
 
 class BatchEmbedResponse(BaseModel):
     """Response schema for embeddings"""
-    model_name: str
+    embedding_model: str
     embeddings: list[DenseVector | SparseVector]
     count: int
     dimensions: int
@@ -46,6 +46,6 @@ class TokensCountRequest(BaseModel):
 
 class TokensCountResponse(BaseModel):
     """Response schema for tokens count"""
-    model_name: str
+    embedding_model: str
     tokens_count: list[int]
     compute_time: float

@@ -49,7 +49,7 @@ def batch_embed(request: BatchEmbedRequest[embedder.Settings]) -> BatchEmbedResp
     start_time = datetime.now()
     embeddings = embedder.batch_embed(request.texts, request.settings)
     response = BatchEmbedResponse(
-        model_name=embedder.MODEL_NAME,
+        embedding_model=embedder.MODEL_NAME,
         embeddings=embeddings,
         compute_time=(datetime.now() - start_time).total_seconds(),
         count=len(embeddings),
@@ -73,7 +73,7 @@ def count_tokens_(request: TokensCountRequest) -> TokensCountResponse:
     start_time = datetime.now()
     tokens_count = embedder.batch_count_tokens(request.texts)
     response = TokensCountResponse(
-        model_name=embedder.MODEL_NAME,
+        embedding_model=embedder.MODEL_NAME,
         tokens_count=tokens_count,
         compute_time=(datetime.now() - start_time).total_seconds(),
     )
