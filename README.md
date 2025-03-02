@@ -88,8 +88,6 @@ Response includes:
 
 - Model name
 - Generated embeddings
-- Count of processed items
-- Dimensions of the generated embeddings
 - Computation time
 
 ### Token Counting (`POST /count_tokens`)

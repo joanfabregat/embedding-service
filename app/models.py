@@ -34,8 +34,6 @@ class BatchEmbedResponse(BaseModel):
     """Response schema for embeddings"""
     embedding_model: str
     embeddings: list[DenseVector | SparseVector]
-    count: int
-    dimensions: int
     compute_time: float
 
 

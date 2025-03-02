@@ -51,14 +51,7 @@ def batch_embed(request: BatchEmbedRequest[embedder.Settings]) -> BatchEmbedResp
     response = BatchEmbedResponse(
         embedding_model=embedder.MODEL_NAME,
         embeddings=embeddings,
-        compute_time=(datetime.now() - start_time).total_seconds(),
-        count=len(embeddings),
-        dimensions=(
-            len(embeddings[0][0])
-            if isinstance(embeddings[0], tuple)
-            else len(embeddings[0])
-            if embeddings else 0
-        )
+        compute_time=(datetime.now() - start_time).total_seconds()
     )
     logger.info(f"Computed embeddings in {response.compute_time:.2f}s")
     return response
