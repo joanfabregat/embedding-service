@@ -86,8 +86,8 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKERHUB_IMAGE }}:buildcache-${{ matrix.model.name }}
           cache-to: type=registry,ref=${{ env.DOCKERHUB_IMAGE }}:buildcache-${{ matrix.model.name }},mode=inline
           build-args: |
-            APP_VERSION=${{ github.ref_name }}
+            VERSION=${{ github.ref_name }}
             DEPENDENCIES_GROUP=${{ matrix.model.dependencies_group }}
             EMBEDDING_MODEL=${{ matrix.model.name }}
-            APP_BUILD_ID=${{ github.run_id }}
-            APP_COMMIT_SHA=${{ github.sha }}
+            BUILD_ID=${{ github.run_id }}
+            COMMIT_SHA=${{ github.sha }}
