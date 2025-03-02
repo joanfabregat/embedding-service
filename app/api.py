@@ -47,10 +47,7 @@ def batch_embed(request: BatchEmbedRequest[embedder.Settings]) -> BatchEmbedResp
     """
     logger.info(f"Embedding {len(request.texts)} texts")
     start_time = datetime.now()
-
-    # If the batch is small enough, embed it in one go
     embeddings = embedder.batch_embed(request.texts, request.settings)
-
     response = BatchEmbedResponse(
         embedding_model=embedder.MODEL_NAME,
         embeddings=embeddings,
