@@ -5,7 +5,7 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
-name: Build and Push Docker Images with Multiple Models
+name: Build and Push Docker Images with Multiple Models to DockerHub and GHCR
 
 on:
   push:
@@ -16,7 +16,7 @@ on:
 
 env:
   DOCKERHUB_IMAGE: "joanfabregat/embedding-service"
-  GHCR_IMAGE: "ghcr.io/${{ github.repository_owner }}/embedding-service"
+  GHCR_IMAGE: "ghcr.io/joanfabregat/embedding-service"
 
 jobs:
   build-and-push:
