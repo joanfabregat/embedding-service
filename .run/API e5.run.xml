@@ -1,0 +1,22 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="API e5" type="Python.FastAPI">
+    <option name="additionalOptions" value="--reload --port=8002" />
+    <option name="file" value="$PROJECT_DIR$/app/api.py" />
+    <module name="embedding-service" />
+    <option name="ENV_FILES" value="" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="PARENT_ENVS" value="true" />
+    <envs>
+      <env name="EMBEDDING_MODEL" value="e5" />
+    </envs>
+    <option name="SDK_HOME" value="$PROJECT_DIR$/.venv/bin/python" />
+    <option name="SDK_NAME" value="Python 3.13 virtualenv at ~/Code/embedding-service/.venv" />
+    <option name="WORKING_DIRECTORY" value="" />
+    <option name="IS_MODULE_SDK" value="false" />
+    <option name="ADD_CONTENT_ROOTS" value="true" />
+    <option name="ADD_SOURCE_ROOTS" value="true" />
+    <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+    <option name="launchJavascriptDebuger" value="false" />
+    <method v="2" />
+  </configuration>
+</component>

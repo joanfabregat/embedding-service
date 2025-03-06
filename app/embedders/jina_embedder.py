@@ -1,11 +1,5 @@
-# Copyright (c) 2025 Joan Fabrégat <j@fabreg.at>
-# Permission is hereby granted, free of charge, to any person
-# obtaining a copy of this software and associated documentation
-# files (the "Software"), to deal in the Software without
-# restriction, subject to the conditions in the full MIT License.
-# The Software is provided "as is", without warranty of any kind.
-
 import enum
+
 import torch
 from transformers import AutoTokenizer, AutoModel
 
@@ -33,6 +27,7 @@ class JinaEmbedder(BaseTransformerEmbedder):
 
         normalize: bool = True
         task: Task = Task.RETRIEVAL_QUERY
+        batch_size: int = 4
 
     def __init__(self):
         """Initialize the embedder."""
@@ -43,37 +38,62 @@ class JinaEmbedder(BaseTransformerEmbedder):
             trust_remote_code=True,
             revision=self.MODEL_REVISION
         )
+        # Initialize model on CPU first for better memory management
         self.model = AutoModel.from_pretrained(
             self.MODEL_NAME,
             trust_remote_code=True,
-            revision=self.MODEL_REVISION
-        ).to(self.DEVICE)
+            revision=self.MODEL_REVISION,
+            low_cpu_mem_usage=True
+        )
 
-    # noinspection DuplicatedCode
     def batch_embed(self, texts: list[str], settings: Settings = None) -> list[DenseVector]:
-        """Get embeddings for a batch of texts"""
-        logger.info(f"Embedding {len(texts)} texts using {self.MODEL_NAME}")
+        """Get embeddings for a batch of texts with memory efficiency"""
+        if not texts:
+            return []
 
         if settings is None:
             settings = self.Settings()
 
-        # Tokenize and prepare for model
-        inputs = self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to(self.DEVICE)
+        total_texts = len(texts)
+        logger.info(f"Embedding {total_texts} texts using {self.MODEL_NAME} with batching")
 
-        # Generate embeddings
-        with torch.no_grad():
-            model_output = self.model(**inputs, task=settings.task.value)
+        # Use batch size from settings
+        batch_size = settings.batch_size
+        all_embeddings: list[DenseVector] = []
 
-        # Apply mean pooling and optionally normalize
-        token_embeddings = model_output[0]
-        input_mask_expanded = inputs['attention_mask'].unsqueeze(-1).expand(token_embeddings.size()).float()
-        embeddings = (
-                torch.sum(token_embeddings * input_mask_expanded, 1)
-                / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-        )
+        # Process texts in batches
+        try:
+            self._move_model_to_device()
+            for i, batch in enumerate(self._create_batches(texts, batch_size)):
+                try:
+                    logger.debug(
+                        f"Processing batch {i + 1}/{(total_texts + batch_size - 1) // batch_size} with {len(batch)} texts")
 
-        if settings.normalize:
-            embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
+                    with torch.no_grad():
+                        # Process a single batch
+                        batch_output = self.model.encode(sentences=batch, task=settings.task.value)
 
-        # Convert to numpy and then to list for JSON serialization
-        return embeddings.cpu().numpy().tolist()
+                    # If output is a tensor, convert to list
+                    if isinstance(batch_output, torch.Tensor):
+                        batch_output = batch_output.detach().cpu().numpy().tolist()
+
+                    # Handle different output types from the model's encode method
+                    if isinstance(batch_output, list):
+                        # Check if we need to do conversion from tensors
+                        if batch_output and isinstance(batch_output[0], torch.Tensor):
+                            batch_output = [t.cpu().numpy().tolist() for t in batch_output]
+
+                    # Add batch results to the full results list
+                    all_embeddings.extend(batch_output)
+
+                    # Clean up batch resources
+                    del batch_output
+                finally:
+                    # Move model back to CPU to free GPU memory
+                    self._force_gc()
+        finally:
+            self._move_model_to_cpu()
+            self._force_gc()
+
+            logger.info(f"Completed embedding {total_texts} texts")
+        return all_embeddings

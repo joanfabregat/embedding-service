@@ -5,6 +5,8 @@
 # restriction, subject to the conditions in the full MIT License.
 # The Software is provided "as is", without warranty of any kind.
 
+from typing import Iterator
+
 from pydantic import BaseModel
 
 from app.models import DenseVector, SparseVector
@@ -13,7 +15,6 @@ from app.models import DenseVector, SparseVector
 class BaseEmbedder:
     """Base class for embedders"""
     MODEL_NAME = ...
-    DEVICE = ...
 
     class Settings(BaseModel):
         pass
@@ -32,3 +33,9 @@ class BaseEmbedder:
     def count_tokens(self, text: str) -> int:
         """Count the number of tokens in a text."""
         raise NotImplementedError
+
+    @staticmethod
+    def _create_batches(texts: list[str], batch_size: int) -> Iterator[list[str]]:
+        """Split list of texts into batches of specified size."""
+        for i in range(0, len(texts), batch_size):
+            yield texts[i:i + batch_size]

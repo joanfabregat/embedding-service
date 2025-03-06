@@ -35,7 +35,7 @@ def root():
         commit_sha=COMMIT_SHA,
         uptime=round((datetime.now() - startup).total_seconds()),
         embedding_model=embedder.MODEL_NAME,
-        device=embedder.DEVICE,
+        device=str(embedder.DEVICE),
     )
 
 
@@ -53,7 +53,7 @@ def batch_embed(request: BatchEmbedRequest[embedder.Settings]) -> BatchEmbedResp
         embeddings=embeddings,
         compute_time=(datetime.now() - start_time).total_seconds()
     )
-    logger.info(f"Computed embeddings in {response.compute_time:.2f}s")
+    logger.info(f"Computed {len(request.texts)} embeddings in {response.compute_time:.2f}s")
     return response
 
 
@@ -62,7 +62,7 @@ def count_tokens_(request: TokensCountRequest) -> TokensCountResponse:
     """
     Count the number of tokens in a batch of texts
     """
-    logger.info(f"Counting {len(request.texts)} tokens")
+    logger.info(f"Counting tokens for {len(request.texts)} texts")
     start_time = datetime.now()
     tokens_count = embedder.batch_count_tokens(request.texts)
     response = TokensCountResponse(
@@ -70,5 +70,5 @@ def count_tokens_(request: TokensCountRequest) -> TokensCountResponse:
         tokens_count=tokens_count,
         compute_time=(datetime.now() - start_time).total_seconds(),
     )
-    logger.info(f"Computed tokens in {response.compute_time:.2f}s")
+    logger.info(f"Counter tokens for {len(request.texts)} texts in {response.compute_time:.2f}s")
     return response

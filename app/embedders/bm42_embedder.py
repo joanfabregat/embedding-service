@@ -6,10 +6,10 @@
 #  The Software is provided "as is", without warranty of any kind.
 
 import re
-
+import gc
 import numpy as np
 from fastembed import SparseTextEmbedding
-
+import enum
 from app.logging import logger
 from .base_embedder import BaseEmbedder, SparseVector
 
@@ -24,15 +24,17 @@ class BM42Embedder(BaseEmbedder):
     """
 
     MODEL_NAME = "Qdrant/bm42-all-minilm-l6-v2-attentions"
-    DEVICE = "cpu"
 
     class Settings(BaseEmbedder.Settings):
+        class Task(str, enum.Enum):
+            QUERY: str = "query"
+            INDEX: str = "index"
+
+        task: Task = Task.QUERY
         sparsity_threshold: float = 0.005
         allow_null_vector: bool = False
-        # Define a maximum token limit for the model
-        window_size: int = 512
-        # Define a default overlap for the sliding window (in tokens)
-        window_overlap: int = 100
+        window_size: int = 512  # Define a maximum token limit for the model
+        window_overlap: int = 100  # Define a default overlap for the sliding window (in tokens)
         window_combine_strategy: str = 'max'
 
     def __init__(self):
@@ -46,85 +48,98 @@ class BM42Embedder(BaseEmbedder):
         """
         Embed a batch of texts into sparse vectors using sliding window approach for long texts.
         """
-        logger.info(f"Embedding {len(texts)} texts using {self.MODEL_NAME}")
-
-        if settings is None:
-            settings = self.Settings()
-
-        # Categorize texts based on token count
-        short_texts = []  # Texts that fit within window_size
-        long_texts_info = []  # Tuples of (original_index, windows) for long texts
-
-        for idx, text in enumerate(texts):
-            if self.count_tokens(text) <= settings.window_size:
-                short_texts.append(text)
-            else:
-                windows = self._split_into_windows(text, settings.window_size, settings.window_overlap)
-                long_texts_info.append((idx, windows))
+        texts_count = len(texts)
+        logger.info(f"Embedding {texts_count} texts using {self.MODEL_NAME}")
 
         # Prepare result containers
-        result_vectors: list[SparseVector | None] = [None] * len(texts)
+        result_vectors: list[SparseVector | None] = [None] * texts_count
 
-        # Process short texts in a batch (if any)
-        if short_texts:
-            # Create a mapping of original indices
-            short_text_map = []
+        try:
+            if settings is None:
+                settings = self.Settings()
+
+            # Categorize texts based on token count
+            short_texts = []  # Texts that fit within window_size
+            long_texts_info = []  # Tuples of (original_index, windows) for long texts
+
             for idx, text in enumerate(texts):
                 if self.count_tokens(text) <= settings.window_size:
-                    short_text_map.append(idx)
-
-            # Embed all short texts and process them as a stream
-            short_embeddings = self.model.embed(short_texts)
-            for embedding, orig_idx in zip(short_embeddings, short_text_map):
-                sparse_vector = embedding.indices.tolist(), embedding.values.tolist()
-                if settings.sparsity_threshold:
-                    sparse_vector = self._apply_sparse_threshold(
-                        sparse_vector,
-                        settings.sparsity_threshold,
-                        settings.allow_null_vector
-                    )
-                result_vectors[orig_idx] = sparse_vector
-
-        # Process all windows from long texts as a single batch (if any)
-        if long_texts_info:
-            # Flatten all windows into a single batch
-            all_windows = []
-            window_map = []  # Maps each window back to its original text
-
-            for orig_idx, windows in long_texts_info:
-                for window in windows:
-                    all_windows.append(window)
-                    window_map.append(orig_idx)
-
-            # Embed all windows in a single batch and process them as a stream
-            all_window_embeddings = self.model.embed(all_windows)
-
-            # Group window embeddings by original text
-            text_to_windows = {}
-            for embedding, orig_idx in zip(all_window_embeddings, window_map):
-                if orig_idx not in text_to_windows:
-                    text_to_windows[orig_idx] = []
-
-                sparse_vector = embedding.indices.tolist(), embedding.values.tolist()
-                if settings.sparsity_threshold:
-                    sparse_vector = self._apply_sparse_threshold(
-                        sparse_vector,
-                        settings.sparsity_threshold,
-                        settings.allow_null_vector
-                    )
-
-                if sparse_vector:  # Only add non-None vectors
-                    text_to_windows[orig_idx].append(sparse_vector)
-
-            # Combine windows for each long text
-            for orig_idx, window_vectors in text_to_windows.items():
-                if window_vectors:
-                    combined_vector = self._combine_sparse_vectors(window_vectors, settings.window_combine_strategy)
-                    result_vectors[orig_idx] = combined_vector
+                    short_texts.append(text)
                 else:
-                    result_vectors[orig_idx] = None if settings.allow_null_vector else ([], [])
+                    windows = self._split_into_windows(text, settings.window_size, settings.window_overlap)
+                    long_texts_info.append((idx, windows))
+
+            # Process short texts in a batch (if any)
+            if short_texts:
+                # Create a mapping of original indices
+                short_text_map = []
+                for idx, text in enumerate(texts):
+                    if self.count_tokens(text) <= settings.window_size:
+                        short_text_map.append(idx)
+
+                # Embed all short texts and process them as a stream
+                short_embeddings = self._embed(short_texts, settings)
+                for embedding, orig_idx in zip(short_embeddings, short_text_map):
+                    sparse_vector = embedding.indices.tolist(), embedding.values.tolist()
+                    if settings.sparsity_threshold:
+                        sparse_vector = self._apply_sparse_threshold(
+                            sparse_vector,
+                            settings.sparsity_threshold,
+                            settings.allow_null_vector
+                        )
+                    result_vectors[orig_idx] = sparse_vector
+
+            # Process all windows from long texts as a single batch (if any)
+            if long_texts_info:
+                # Flatten all windows into a single batch
+                all_windows = []
+                window_map = []  # Maps each window back to its original text
+
+                for orig_idx, windows in long_texts_info:
+                    for window in windows:
+                        all_windows.append(window)
+                        window_map.append(orig_idx)
+
+                # Embed all windows in a single batch and process them as a stream
+                all_window_embeddings = self._embed(all_windows, settings)
+
+                # Group window embeddings by original text
+                text_to_windows = {}
+                for embedding, orig_idx in zip(all_window_embeddings, window_map):
+                    if orig_idx not in text_to_windows:
+                        text_to_windows[orig_idx] = []
+
+                    sparse_vector = embedding.indices.tolist(), embedding.values.tolist()
+                    if settings.sparsity_threshold:
+                        sparse_vector = self._apply_sparse_threshold(
+                            sparse_vector,
+                            settings.sparsity_threshold,
+                            settings.allow_null_vector
+                        )
+
+                    if sparse_vector:  # Only add non-None vectors
+                        text_to_windows[orig_idx].append(sparse_vector)
+
+                # Combine windows for each long text
+                for orig_idx, window_vectors in text_to_windows.items():
+                    if window_vectors:
+                        combined_vector = self._combine_sparse_vectors(window_vectors, settings.window_combine_strategy)
+                        result_vectors[orig_idx] = combined_vector
+                    else:
+                        result_vectors[orig_idx] = None if settings.allow_null_vector else ([], [])
+        finally:
+            gc.collect()
 
         return result_vectors
+
+    def _embed(self, texts: list[str], settings: Settings):
+        """Embed a list of texts using the BM42 model."""
+        if settings.task == self.Settings.Task.QUERY:
+            return self.model.query_embed(texts)
+        elif settings.task == self.Settings.Task.INDEX:
+            return self.model.embed(texts)
+        else:
+            raise ValueError(f"Unsupported task: {settings.task}")
 
     @staticmethod
     def _split_into_windows(text: str, window_size: int, window_overlap: int) -> list[str]:
