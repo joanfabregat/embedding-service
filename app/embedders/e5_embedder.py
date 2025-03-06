@@ -33,7 +33,7 @@ class E5Embedder(BaseTransformerEmbedder):
         self.tokenizer = AutoTokenizer.from_pretrained(self.MODEL_NAME)
         self.model = AutoModel.from_pretrained(
             self.MODEL_NAME,
-            low_cpu_mem_usage=True  # Use memory-efficient initialization
+            low_cpu_mem_usage=True
         )
 
     # noinspection DuplicatedCode

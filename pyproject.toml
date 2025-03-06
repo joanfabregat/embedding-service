@@ -18,6 +18,7 @@ dependencies = [
     "fastapi",
     "pydantic",
     "uvicorn",
+    "accelerate>=1.4.0",
 ]
 
 [dependency-groups]

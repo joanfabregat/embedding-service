@@ -25,7 +25,6 @@ class JinaEmbedder(BaseTransformerEmbedder):
             CLASSIFICATION: str = "classification"
             TEXT_MATCHING: str = "text-matching"
 
-        normalize: bool = True
         task: Task = Task.RETRIEVAL_QUERY
         batch_size: int = 4
 
