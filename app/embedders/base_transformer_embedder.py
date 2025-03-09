@@ -12,17 +12,12 @@ from transformers import PreTrainedTokenizer, PreTrainedModel
 
 from app.logging import logger
 from .base_embedder import BaseEmbedder
+from .utils import get_computation_device
 
 
 class BaseTransformerEmbedder(BaseEmbedder):
     """Base class for dense embedders."""
-    DEVICE = (
-        torch.device("cuda")
-        if torch.cuda.is_available()
-        else torch.device("mps")
-        if torch.mps.is_available()
-        else torch.device("cpu")
-    )
+    DEVICE = get_computation_device()
 
     class Settings(BaseEmbedder.Settings):
         normalize: bool = True

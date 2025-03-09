@@ -35,7 +35,7 @@ def root():
         commit_sha=COMMIT_SHA,
         uptime=round((datetime.now() - startup).total_seconds()),
         embedding_model=embedder.MODEL_NAME,
-        device=str(embedder.DEVICE),
+        device=str(embedder.DEVICE) if embedder.DEVICE is not None else None,
     )
 
 

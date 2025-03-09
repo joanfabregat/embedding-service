@@ -6,7 +6,7 @@
 # The Software is provided "as is", without warranty of any kind.
 
 from typing import Iterator
-
+import torch
 from pydantic import BaseModel
 
 from app.models import DenseVector, SparseVector
@@ -14,7 +14,8 @@ from app.models import DenseVector, SparseVector
 
 class BaseEmbedder:
     """Base class for embedders"""
-    MODEL_NAME = ...
+    MODEL_NAME: str = ...
+    DEVICE: torch.device | None = None
 
     class Settings(BaseModel):
         pass

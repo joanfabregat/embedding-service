@@ -21,7 +21,7 @@ class RootResponse(BaseModel):
     commit_sha: str
     uptime: float
     embedding_model: str
-    device: str
+    device: str | None
 
 
 class BatchEmbedRequest(BaseModel, Generic[SettingsType]):
