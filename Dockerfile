@@ -25,7 +25,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy dependency specification and install production dependencies
 COPY uv.lock pyproject.toml ./
-RUN uv sync --frozen --group ${DEPENDENCIES_GROUP}
+RUN uv sync --frozen --group ${DEPENDENCIES_GROUP} --no-default-groups
 
 
 # --- Final Image ---
