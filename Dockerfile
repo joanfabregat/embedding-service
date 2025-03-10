@@ -67,4 +67,4 @@ RUN mkdir -p /app/cache && chmod 777 /app/cache && \
 
 # https://cloud.google.com/run/docs/tips/python#optimize_gunicorn
 EXPOSE $PORT
-CMD ["sh", "-c", "uvicorn app.api:api --host 0.0.0.0 --port $PORT --workers 1 --log-level info"]
+CMD ["sh", "-c", "uvicorn app.api:api --host 0.0.0.0 --port $PORT --workers 1 --log-level info --timeout-keep-alive 0"]
