@@ -83,8 +83,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=registry,ref=${{ env.DOCKERHUB_IMAGE }}:buildcache-${{ matrix.model.name }}
-          cache-to: type=registry,ref=${{ env.DOCKERHUB_IMAGE }}:buildcache-${{ matrix.model.name }},mode=inline
+          cache-from: type=registry,ref=${{ env.GHCR_IMAGE }}:buildcache-${{ matrix.model.name }}
+          cache-to: type=registry,ref=${{ env.GHCR_IMAGE }}:buildcache-${{ matrix.model.name }},mode=inline
           build-args: |
             VERSION=${{ github.ref_name }}
             DEPENDENCIES_GROUP=${{ matrix.model.dependencies_group }}
